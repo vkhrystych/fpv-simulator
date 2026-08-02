@@ -13,7 +13,7 @@ import type { DroneSpec, PayloadSpec } from '../flight/types'
 export const DRONES: Record<string, DroneSpec> = {
   'trainer-7': {
     id: 'trainer-7',
-    label: '7" тренувальний',
+    label: '7" trainer',
     mass: 0.85,
     maxThrustN: 34,
     armLength: 0.15,
@@ -43,7 +43,7 @@ export const DRONES: Record<string, DroneSpec> = {
 
   'light-7': {
     id: 'light-7',
-    label: '7" легкий',
+    label: '7" light',
     mass: 1.05,
     maxThrustN: 36,
     armLength: 0.155,
@@ -73,7 +73,7 @@ export const DRONES: Record<string, DroneSpec> = {
 
   'mid-8': {
     id: 'mid-8',
-    label: '8" середній',
+    label: '8" medium',
     mass: 1.6,
     maxThrustN: 44,
     armLength: 0.185,
@@ -103,7 +103,7 @@ export const DRONES: Record<string, DroneSpec> = {
 
   'heavy-10': {
     id: 'heavy-10',
-    label: '10" важкий',
+    label: '10" heavy',
     mass: 2.4,
     // 70 Н дає TWR 1.46 з важким БК: усе ще «баржа», яка тоне на різкому
     // нахилі, але не машина, що ледве відривається від землі
@@ -135,7 +135,7 @@ export const DRONES: Record<string, DroneSpec> = {
 
   'longrange-13': {
     id: 'longrange-13',
-    label: '13" далекобійний',
+    label: '13" long-range',
     mass: 2.9,
     maxThrustN: 66,
     armLength: 0.28,
@@ -165,7 +165,7 @@ export const DRONES: Record<string, DroneSpec> = {
 
   'night-8': {
     id: 'night-8',
-    label: '8" нічний',
+    label: '8" night',
     mass: 1.75,
     maxThrustN: 45,
     armLength: 0.185,
@@ -197,7 +197,7 @@ export const DRONES: Record<string, DroneSpec> = {
 export const PAYLOADS: Record<string, PayloadSpec> = {
   none: {
     id: 'none',
-    label: 'без навантаження',
+    label: 'none',
     mass: 0,
     comOffset: 0,
     dragArea: 0,
@@ -205,7 +205,7 @@ export const PAYLOADS: Record<string, PayloadSpec> = {
   },
   light: {
     id: 'light',
-    label: 'легке (0.5 кг)',
+    label: 'light (0.5 kg)',
     mass: 0.5,
     comOffset: 0.07,
     dragArea: 0.005,
@@ -213,7 +213,7 @@ export const PAYLOADS: Record<string, PayloadSpec> = {
   },
   medium: {
     id: 'medium',
-    label: 'середнє (1.2 кг)',
+    label: 'medium (1.2 kg)',
     mass: 1.2,
     comOffset: 0.095,
     dragArea: 0.013,
@@ -221,7 +221,7 @@ export const PAYLOADS: Record<string, PayloadSpec> = {
   },
   heavy: {
     id: 'heavy',
-    label: 'важке (2.5 кг)',
+    label: 'heavy (2.5 kg)',
     mass: 2.5,
     comOffset: 0.125,
     dragArea: 0.022,
@@ -231,7 +231,7 @@ export const PAYLOADS: Record<string, PayloadSpec> = {
     id: 'bulky',
     // сенс цього БК — ПЛОЩА, а не вага: 1.35 кг лишає запас тяги
     // навіть 7-дюймовому борту, але зносить його вітром сильніше за все інше
-    label: 'об’ємне (1.35 кг)',
+    label: 'bulky (1.35 kg)',
     mass: 1.35,
     comOffset: 0.115,
     dragArea: 0.055,

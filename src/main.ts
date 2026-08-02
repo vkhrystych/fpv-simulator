@@ -10,6 +10,8 @@ import { VehicleRenderer } from './render/vehicles'
 import { Osd } from './ui/osd'
 import { Briefing } from './ui/briefing'
 import { Debrief } from './ui/debrief'
+import { LevelSelect } from './ui/levelselect'
+import { Progress } from './game/progress'
 import { AngleController } from './flight/angle'
 import { qrotate, v3 } from './flight/math'
 import type { MissionResult } from './game/mission'
@@ -25,6 +27,8 @@ const audio = new FlightAudio()
 const osd = new Osd(app)
 const briefing = new Briefing(app)
 const debrief = new Debrief(app)
+const levelSelect = new LevelSelect(app)
+const progress = new Progress()
 
 interface Runtime {
   session: Session
@@ -46,11 +50,28 @@ function sizeOf(): [number, number] {
   return [Math.max(1, innerWidth), Math.max(1, innerHeight)]
 }
 
+/** Екран кампанії: що пройдено, що відкрито, звідки продовжити. */
+function showCampaign(): void {
+  briefing.hide()
+  debrief.hide()
+  osd.root.classList.add('hidden')
+  levelSelect.show(
+    progress,
+    (level) => loadSortie(LEVELS.indexOf(level), level.id === progress.resumeLevelId ? progress.resumeSortieIndex : 0),
+    () => {
+      progress.reset()
+      showCampaign()
+    },
+  )
+}
+
 /** Показує брифінг конкретного вильоту рівня. */
 function loadSortie(index: number, sortie = 0): void {
+  levelSelect.hide()
   levelIndex = Math.min(Math.max(index, 0), LEVELS.length - 1)
   const level = LEVELS[levelIndex]
   sortieIndex = Math.min(Math.max(sortie, 0), level.sorties.length - 1)
+  progress.setCurrent(level.id, sortieIndex)
   briefing.show(level, createSession(level, sortieIndex).terrain, () => startFlight(level), sortieIndex)
   osd.root.classList.add('hidden')
 }
@@ -139,13 +160,18 @@ function frame(now: number): void {
       audio.impact()
 
       const total = session.level.sorties.length
+      // прогрес пишемо одразу: закрив вкладку після вдалого вильоту —
+      // повернешся на наступний, а не на початок рівня
+      if (result.outcome === 'success') progress.completeSortie(session.level.id, sortieIndex)
+      else progress.failLevel(session.level.id)
+
       const moreSorties = result.outcome === 'success' && sortieIndex + 1 < total
       const moreLevels = result.outcome === 'success' && !moreSorties && levelIndex + 1 < LEVELS.length
       const onNext = moreSorties
         ? () => loadSortie(levelIndex, sortieIndex + 1)
         : moreLevels
           ? () => loadSortie(levelIndex + 1, 0)
-          : undefined
+          : showCampaign
 
       debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total })
       osd.root.classList.add('hidden')
@@ -169,5 +195,6 @@ const params = new URLSearchParams(location.search)
 const sens = Number(params.get('sens'))
 if (Number.isFinite(sens) && sens > 0) input.sensitivity = sens
 const requested = Number(params.get('level'))
-loadSortie(Number.isFinite(requested) && requested > 0 ? requested - 1 : 0, 0)
+if (Number.isFinite(requested) && requested > 0) loadSortie(requested - 1, 0)
+else showCampaign()
 requestAnimationFrame(frame)

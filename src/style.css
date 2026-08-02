@@ -158,3 +158,43 @@ button.primary { border-color: #7dff8a; color: #7dff8a; }
 .sorties li { color: #6f7a69; }
 .sorties li.now { color: #7dff8a; }
 .sorties li.done { color: #8b9585; text-decoration: line-through; }
+
+/* ── Вибір рівня ──────────────────────────────────────────────── */
+.select-wrap { max-width: 900px; width: 100%; }
+.select-wrap h1 { margin: 6px 0 10px; font-size: 32px; }
+.select-wrap .brief { margin: 0 0 26px; color: #a9b2a0; }
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.level-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "num name state" "num meta state";
+  column-gap: 12px;
+  align-items: center;
+  margin: 0;
+  padding: 12px 14px;
+  text-align: left;
+  letter-spacing: normal;
+  border: 1px solid #303629;
+  background: #131711;
+}
+.level-card:hover:not(:disabled) { background: #1c2119; border-color: #59634f; }
+.level-card:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.level-card .num {
+  grid-area: num;
+  font-size: 20px;
+  color: #5d6a55;
+}
+.level-card .name { grid-area: name; font-size: 14px; }
+.level-card .meta { grid-area: meta; font-size: 11px; color: #7e887a; }
+.level-card .state { grid-area: state; font-size: 15px; color: #7dff8a; }
+
+.level-card.done { border-color: #2f5c36; }
+.level-card.done .num { color: #7dff8a; }
+.level-card.resume { border-color: #7dff8a; }

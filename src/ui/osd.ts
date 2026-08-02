@@ -9,14 +9,14 @@ import { radToDeg } from '../flight/rates'
  * єдина «навігація» гравця це компас і пам'ять про брифінг.
  */
 const CARDINALS: Array<[number, string]> = [
-  [0, 'Пн'],
-  [45, 'ПнС'],
-  [90, 'С'],
-  [135, 'ПдС'],
-  [180, 'Пд'],
-  [225, 'ПдЗ'],
-  [270, 'З'],
-  [315, 'ПнЗ'],
+  [0, 'N'],
+  [45, 'NE'],
+  [90, 'E'],
+  [135, 'SE'],
+  [180, 'S'],
+  [225, 'SW'],
+  [270, 'W'],
+  [315, 'NW'],
 ]
 
 export class Osd {
@@ -90,7 +90,7 @@ export class Osd {
       `SPD ${Math.round(t.speed * 3.6)}\n` +
       `THR ${String(thr).padStart(3)}%  ${'▮'.repeat(Math.round(thr / 12.5)).padEnd(8, '▯')}`
     this.br.textContent =
-      `${Math.round(drone.distanceFromLaunch)} м${mission.armed ? '  A' : '  ·'}\n` +
+      `${Math.round(drone.distanceFromLaunch)} m${mission.armed ? '  A' : '  ·'}\n` +
       `${drone.state.landed ? 'GND' : 'AIR'}${drone.telemetry.saturation > 0.2 ? '  SAT' : ''}`
 
     this.center.textContent = mission.idFlash > 0 && Math.floor(mission.idFlash * 8) % 2 === 0 ? 'ID' : ''

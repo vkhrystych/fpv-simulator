@@ -45,17 +45,17 @@ describe('каталог техніки', () => {
     expect(t.length).toBe(VEHICLES.tank.length)
     expect(t.height).toBe(VEHICLES.tank.height)
     expect(t.hitRadius).toBe(VEHICLES.tank.hitRadius)
-    expect(t.label).toBe('танк')
+    expect(t.label).toBe('tank')
   })
 
   it('рівень може перекрити габарити точково', () => {
     const t = new Target(
-      { id: 'x', kind: 'target', vehicle: 'truck', position: [0, 0], hitRadius: 9, label: 'особлива' },
+      { id: 'x', kind: 'target', vehicle: 'truck', position: [0, 0], hitRadius: 9, label: 'special' },
       terrain,
     )
     expect(t.hitRadius).toBe(9)
     expect(t.length).toBe(VEHICLES.truck.length)
-    expect(t.label).toBe('особлива')
+    expect(t.label).toBe('special')
   })
 
   it('малу техніку видно значно ближче, ніж велику', () => {

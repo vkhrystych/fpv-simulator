@@ -53,15 +53,15 @@ export interface VehicleProfile {
 }
 
 export const VEHICLES: Record<VehicleClass, VehicleProfile> = {
-  motorcycle: { label: 'мотоцикл', length: 2.1, width: 0.8, height: 1.3, hitRadius: 1.8, cruiseSpeed: 17, tracked: false, turret: false },
-  quad: { label: 'квадроцикл', length: 2.5, width: 1.3, height: 1.5, hitRadius: 2.2, cruiseSpeed: 13, tracked: false, turret: false },
-  car: { label: 'легковий автомобіль', length: 4.4, width: 1.8, height: 1.6, hitRadius: 3, cruiseSpeed: 16, tracked: false, turret: false },
-  pickup: { label: 'пікап', length: 5.3, width: 2, height: 1.9, hitRadius: 3.2, cruiseSpeed: 15, tracked: false, turret: false },
-  van: { label: 'мікроавтобус', length: 5.6, width: 2.1, height: 2.4, hitRadius: 3.4, cruiseSpeed: 14, tracked: false, turret: false },
-  truck: { label: 'вантажівка', length: 8, width: 2.5, height: 3.2, hitRadius: 4.5, cruiseSpeed: 9, tracked: false, turret: false },
-  apc: { label: 'БМП', length: 6.7, width: 3, height: 2.5, hitRadius: 4, cruiseSpeed: 8, tracked: true, turret: true },
-  tank: { label: 'танк', length: 9.5, width: 3.6, height: 2.6, hitRadius: 5, cruiseSpeed: 6, tracked: true, turret: true },
-  emplacement: { label: 'укриття', length: 7, width: 4, height: 2.2, hitRadius: 4.2, cruiseSpeed: 0, tracked: false, turret: false },
+  motorcycle: { label: 'motorcycle', length: 2.1, width: 0.8, height: 1.3, hitRadius: 1.8, cruiseSpeed: 17, tracked: false, turret: false },
+  quad: { label: 'quad bike', length: 2.5, width: 1.3, height: 1.5, hitRadius: 2.2, cruiseSpeed: 13, tracked: false, turret: false },
+  car: { label: 'car', length: 4.4, width: 1.8, height: 1.6, hitRadius: 3, cruiseSpeed: 16, tracked: false, turret: false },
+  pickup: { label: 'pickup', length: 5.3, width: 2, height: 1.9, hitRadius: 3.2, cruiseSpeed: 15, tracked: false, turret: false },
+  van: { label: 'van', length: 5.6, width: 2.1, height: 2.4, hitRadius: 3.4, cruiseSpeed: 14, tracked: false, turret: false },
+  truck: { label: 'truck', length: 8, width: 2.5, height: 3.2, hitRadius: 4.5, cruiseSpeed: 9, tracked: false, turret: false },
+  apc: { label: 'APC', length: 6.7, width: 3, height: 2.5, hitRadius: 4, cruiseSpeed: 8, tracked: true, turret: true },
+  tank: { label: 'tank', length: 9.5, width: 3.6, height: 2.6, hitRadius: 5, cruiseSpeed: 6, tracked: true, turret: true },
+  emplacement: { label: 'emplacement', length: 7, width: 4, height: 2.2, hitRadius: 4.2, cruiseSpeed: 0, tracked: false, turret: false },
 }
 
 export interface TargetSpec {

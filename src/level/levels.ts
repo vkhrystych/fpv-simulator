@@ -76,11 +76,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l1-first-flight',
     index: 1,
-    title: 'Перший виліт',
+    title: 'First Flight',
     brief:
-      'Тренувальний майданчик. Злети з трави, набери висоту й уражай навчальне укриття ' +
-      'у квадраті D4. Навантаження немає — дрон легкий і прощає. Режим ANGLE: ' +
-      'дрон сам тримає горизонт, стіки задають кут нахилу.',
+      'Training range. Lift off from the grass, gain altitude and destroy the practice ' +
+      'emplacement in square D4. No payload — the drone is light and forgiving. ' +
+      'ANGLE mode: the drone holds the horizon for you, the sticks set the bank angle.',
     droneId: 'trainer-7',
     payloadId: 'none',
     terrain: { seed: 20260801, ...MAP, amplitude: 9, featureSize: 900 },
@@ -90,18 +90,18 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['D4'],
     allowAngleMode: true,
     objectives: [
-      'Злетіти з трави та набрати 30 м',
-      'Знайти укриття у квадраті D4',
-      'Утримати ціль у кадрі 1.5 с з дистанції < 80 м',
-      'Уразити ціль',
+      'Lift off from the grass and climb to 30 m',
+      'Find the emplacement in square D4',
+      'Hold the target in frame for 1.5 s from under 80 m',
+      'Destroy the target',
     ],
-    sorties: [{ targetId: 'mock-hull', note: 'Навчальне укриття, квадрат D4' }],
+    sorties: [{ targetId: 'mock-hull', note: 'Practice emplacement, square D4' }],
     targets: [
       {
         id: 'mock-hull',
         kind: 'target',
         vehicle: 'emplacement',
-        label: 'навчальне укриття',
+        label: 'practice emplacement',
         position: [-90, 130],
         headingDeg: 35,
       },
@@ -111,12 +111,12 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l2-convoy-road',
     index: 2,
-    title: 'Ґрунтівка',
+    title: 'Dirt Road',
     brief:
-      'Розвідка ділянки між C3 і F6. По ґрунтівці рухається ворожа вантажівка — ' +
-      'тентована, довга, без причепа. Тими ж дорогами їздить цивільний транспорт: ' +
-      'коротший корпус, світлий колір, часто з причепом. Дрон з легким БК: важчий за ' +
-      'тренувальний, сильніше несе вітром. Зведення — після 60 м від точки зльоту.',
+      'Sweep the ground between C3 and F6. A hostile truck is moving along the dirt ' +
+      'road — tarpaulin bed, long, no trailer. Civilian traffic uses the same roads: ' +
+      'shorter body, lighter paint, often towing. Light payload aboard: heavier than ' +
+      'the trainer and pushed harder by wind. Arms 60 m from the launch point.',
     droneId: 'light-7',
     payloadId: 'light',
     terrain: { seed: 776041, ...MAP },
@@ -126,18 +126,18 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['C3', 'D3', 'D4', 'E4', 'E5', 'F5', 'F6'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати квадрати C3–F6',
-      'Відрізнити ворожу вантажівку від цивільної',
-      'Ідентифікувати ціль перед ударом',
-      'Уразити ворожу вантажівку',
+      'Search squares C3–F6',
+      'Tell the hostile truck from the civilian one',
+      'Identify the target before striking',
+      'Destroy the hostile truck',
     ],
-    sorties: [{ targetId: 'truck-green', note: 'Вантажівка на ґрунтівці, квадрати C3–F6' }],
+    sorties: [{ targetId: 'truck-green', note: 'Truck on the dirt road, squares C3–F6' }],
     targets: [
       {
         id: 'truck-green',
         kind: 'target',
         vehicle: 'truck',
-        label: 'вантажівка (тентована)',
+        label: 'truck (tarpaulin bed)',
         route: {
           points: [
             [-380, -120],
@@ -155,7 +155,7 @@ export const LEVELS: LevelSpec[] = [
         id: 'civ-truck',
         kind: 'civilian',
         vehicle: 'van',
-        label: 'цивільний мікроавтобус',
+        label: 'civilian van',
         route: {
           points: [
             [560, 360],
@@ -186,7 +186,7 @@ export const LEVELS: LevelSpec[] = [
         id: 'decoy-hull',
         kind: 'decoy',
         vehicle: 'emplacement',
-        label: 'макет під сіткою',
+        label: 'mock-up under netting',
         position: [210, -60],
         headingDeg: 100,
         concealed: true,
@@ -197,12 +197,12 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l3-quad-track',
     index: 3,
-    title: 'Квадроцикл',
+    title: 'Quad Bike',
     brief:
-      'Ворожий квадроцикл возить боєкомплект польовою дорогою на північному сході. ' +
-      'Він удвічі менший за вантажівку і вдвічі швидший — з висоти 100 м ти його просто ' +
-      'не побачиш. Доведеться спускатись і вести ціль по дорозі. ' +
-      'Тією ж дорогою їздить цивільний пікап.',
+      'A hostile quad bike is hauling ammunition along a field track in the north-east. ' +
+      'It is half the size of a truck and twice as fast — from 100 m you simply will not ' +
+      'see it. You will have to descend and track it along the road. ' +
+      'A civilian pickup uses the same track.',
     droneId: 'light-7',
     payloadId: 'light',
     terrain: { seed: 481207, ...MAP },
@@ -212,18 +212,18 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['F2', 'G2', 'F3', 'G3', 'H3'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати квадрати F2–H3',
-      'Знайти квадроцикл — корпус 2.5 м',
-      'Вести ціль і врахувати упередження',
-      'Уразити квадроцикл',
+      'Search squares F2–H3',
+      'Find the quad bike — 2.5 m body',
+      'Track it and lead the target',
+      'Destroy the quad bike',
     ],
-    sorties: [{ targetId: 'quad-supply', note: 'Квадроцикл на польовій дорозі, F2–H3' }],
+    sorties: [{ targetId: 'quad-supply', note: 'Quad bike on the field track, F2–H3' }],
     targets: [
       {
         id: 'quad-supply',
         kind: 'target',
         vehicle: 'quad',
-        label: 'квадроцикл із БК',
+        label: 'ammunition quad bike',
         route: {
           points: [
             [320, 620],
@@ -260,11 +260,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l4-motorcycle',
     index: 4,
-    title: 'Мотоцикл',
+    title: 'Motorcycle',
     brief:
-      'Найменша ціль кампанії: корпус 2.1 м, радіус ураження менше двох метрів. ' +
-      'Мотоцикл-зв’язківець курсує на південному заході. Вітер помітний — на заході ' +
-      'тебе зноситиме, закладай поправку ще на підході.',
+      'The smallest target in the campaign: a 2.1 m body with a kill radius under two ' +
+      'metres. A courier motorcycle runs a loop in the south-west. The wind is noticeable — ' +
+      'it will push you east, so build the correction in on the way there.',
     droneId: 'light-7',
     payloadId: 'light',
     terrain: { seed: 903311, ...MAP },
@@ -274,18 +274,18 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['B6', 'C6', 'B7', 'C7', 'D7'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати квадрати B6–D7',
-      'Знайти мотоцикл — найменший силует у грі',
-      'Зайти по вітру, а не проти нього',
-      'Уразити мотоцикл',
+      'Search squares B6–D7',
+      'Find the motorcycle — the smallest silhouette in the game',
+      'Run the attack downwind, not into it',
+      'Destroy the motorcycle',
     ],
-    sorties: [{ targetId: 'moto-courier', note: 'Мотоцикл-зв’язківець, B6–D7' }],
+    sorties: [{ targetId: 'moto-courier', note: 'Courier motorcycle, B6–D7' }],
     targets: [
       {
         id: 'moto-courier',
         kind: 'target',
         vehicle: 'motorcycle',
-        label: 'мотоцикл зв’язку',
+        label: 'courier motorcycle',
         route: {
           points: [
             [-620, -380],
@@ -319,11 +319,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l5-two-sorties',
     index: 5,
-    title: 'Два вильоти',
+    title: 'Two Sorties',
     brief:
-      'Перший рівень із двома вильотами. Спочатку вантажівка на півночі, потім пікап ' +
-      'на півдні — з іншої точки зльоту. Провалиш будь-який виліт — рівень починається ' +
-      'з першого. Дрон 8": помітно в’ялий, гальмувати треба планувати заздалегідь.',
+      'The first level with two sorties. Truck in the north first, then a pickup in the ' +
+      'south — from a different launch point. Fail either sortie and the level restarts ' +
+      'from the first. The 8" airframe is noticeably sluggish: plan your braking early.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 55217, ...MAP },
@@ -333,15 +333,15 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['D2', 'E2', 'E3', 'D6', 'E6', 'E7'],
     allowAngleMode: false,
     objectives: [
-      'Виліт 1: вантажівка в квадратах D2–E3',
-      'Виліт 2: пікап у квадратах D6–E7',
-      'Обидва вильоти поспіль, без провалів',
+      'Sortie 1: truck in squares D2–E3',
+      'Sortie 2: pickup in squares D6–E7',
+      'Both sorties back to back, no failures',
     ],
     sorties: [
-      { targetId: 'truck-north', note: 'Виліт 1 — вантажівка, північ (D2–E3)' },
+      { targetId: 'truck-north', note: 'Sortie 1 — truck, north (D2–E3)' },
       {
         targetId: 'pickup-south',
-        note: 'Виліт 2 — пікап, південь (D6–E7)',
+        note: 'Sortie 2 — pickup, south (D6–E7)',
         launch: { x: -760, y: -700, headingDeg: 40 },
       },
     ],
@@ -398,11 +398,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l6-apc-treeline',
     index: 6,
-    title: 'БМП у лісосмузі',
+    title: 'APC in the Treeline',
     brief:
-      'БМП стоїть під маскувальною сіткою біля лісосмуги. Сітка ріже дистанцію ' +
-      'виявлення більш ніж удвічі: зверху це просто пляма, впізнати можна лише збоку ' +
-      'і зблизька. Поруч — макет, який здалеку виглядає так само.',
+      'An APC sits under camouflage netting beside a treeline. Netting cuts detection ' +
+      'range by more than half: from above it is just a smudge, and it can only be ' +
+      'recognised from the side and up close. A mock-up nearby looks identical at range.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 620145, ...MAP },
@@ -412,18 +412,18 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['C4', 'D4', 'C5', 'D5'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати квадрати C4–D5',
-      'Розрізнити БМП і макет',
-      'Ідентифікувати ціль з дистанції < 80 м',
-      'Уразити БМП',
+      'Search squares C4–D5',
+      'Tell the APC from the mock-up',
+      'Identify the target from under 80 m',
+      'Destroy the APC',
     ],
-    sorties: [{ targetId: 'apc-hidden', note: 'БМП під сіткою, C4–D5' }],
+    sorties: [{ targetId: 'apc-hidden', note: 'APC under netting, C4–D5' }],
     targets: [
       {
         id: 'apc-hidden',
         kind: 'target',
         vehicle: 'apc',
-        label: 'БМП під сіткою',
+        label: 'APC under netting',
         position: [-380, 90],
         headingDeg: 145,
         concealed: true,
@@ -432,7 +432,7 @@ export const LEVELS: LevelSpec[] = [
         id: 'decoy-apc',
         kind: 'decoy',
         vehicle: 'emplacement',
-        label: 'макет БМП',
+        label: 'APC mock-up',
         position: [-210, -60],
         headingDeg: 30,
         concealed: true,
@@ -457,11 +457,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l7-tank',
     index: 7,
-    title: 'Танк',
+    title: 'Tank',
     brief:
-      'Танк на позиції в центрі карти. Ціль велика й помітна, але тобі дали 10" ' +
-      'з важким БК: запас тяги мінімальний, розворот радіусом як у баржі, а на ' +
-      'різкому нахилі дрон просто тоне. Плануй захід за 300 м.',
+      'A tank dug in at the centre of the map. The target is large and easy to see, but ' +
+      'you are flying a 10" with a heavy payload: minimal thrust margin, a turning radius ' +
+      'like a barge, and it simply sinks in a hard bank. Plan the run-in 300 m out.',
     droneId: 'heavy-10',
     payloadId: 'heavy',
     terrain: { seed: 118844, ...MAP },
@@ -471,12 +471,12 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['D4', 'E4', 'D5', 'E5'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати центр карти',
-      'Відчути інерцію важкого борта',
-      'Зайти по прямій, без різких поправок',
-      'Уразити танк',
+      'Search the centre of the map',
+      'Feel the inertia of a heavy airframe',
+      'Run in straight, without sharp corrections',
+      'Destroy the tank',
     ],
-    sorties: [{ targetId: 'tank-center', note: 'Танк на позиції, центр карти' }],
+    sorties: [{ targetId: 'tank-center', note: 'Tank dug in, centre of the map' }],
     targets: [
       {
         id: 'tank-center',
@@ -505,11 +505,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l8-three-sorties',
     index: 8,
-    title: 'Три вильоти',
+    title: 'Three Sorties',
     brief:
-      'Три цілі в трьох кутах карти, три вильоти поспіль: квадроцикл, вантажівка, БМП. ' +
-      'Кожен виліт — свіжий борт і своя точка зльоту. Один провал — і все спочатку, ' +
-      'з квадроцикла.',
+      'Three targets in three corners of the map, three sorties back to back: quad bike, ' +
+      'truck, APC. Every sortie is a fresh airframe from its own launch point. ' +
+      'One failure and it all starts again from the quad bike.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 730992, ...MAP },
@@ -519,21 +519,21 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['B2', 'C2', 'F3', 'G3', 'E6', 'F6'],
     allowAngleMode: false,
     objectives: [
-      'Виліт 1: квадроцикл, північний захід',
-      'Виліт 2: вантажівка, північний схід',
-      'Виліт 3: БМП, південний схід',
-      'Три вильоти поспіль без провалів',
+      'Sortie 1: quad bike, north-west',
+      'Sortie 2: truck, north-east',
+      'Sortie 3: APC, south-east',
+      'Three sorties back to back, no failures',
     ],
     sorties: [
-      { targetId: 'quad-nw', note: 'Виліт 1 — квадроцикл, північний захід (B2–C2)' },
+      { targetId: 'quad-nw', note: 'Sortie 1 — quad bike, north-west (B2–C2)' },
       {
         targetId: 'truck-ne',
-        note: 'Виліт 2 — вантажівка, північний схід (F3–G3)',
+        note: 'Sortie 2 — truck, north-east (F3–G3)',
         launch: { x: -60, y: 780, headingDeg: 120 },
       },
       {
         targetId: 'apc-se',
-        note: 'Виліт 3 — БМП, південний схід (E6–F6)',
+        note: 'Sortie 3 — APC, south-east (E6–F6)',
         launch: { x: 760, y: 760, headingDeg: 200 },
       },
     ],
@@ -606,11 +606,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l9-wind',
     index: 9,
-    title: 'Вітер 8 м/с',
+    title: 'Wind 8 m/s',
     brief:
-      'Об’ємний БК: маса помірна, а от площа величезна. Вітер 8.5 м/с із поривами ' +
-      'зноситиме тебе весь політ, максималка просяде на чверть. Ціль — вантажівка ' +
-      'на відкритій ділянці, де ховатись від вітру нема за чим.',
+      'Bulky payload: moderate mass, enormous frontal area. A gusting 8.5 m/s wind will ' +
+      'push you the whole flight and your top speed drops by a quarter. The target is a ' +
+      'truck in the open, where there is nothing to shelter behind.',
     droneId: 'light-7',
     payloadId: 'bulky',
     terrain: { seed: 344870, ...MAP, amplitude: 11 },
@@ -620,11 +620,11 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['C3', 'D3', 'C4', 'D4'],
     allowAngleMode: false,
     objectives: [
-      'Обшукати квадрати C3–D4',
-      'Врахувати знос — заходити треба з поправкою',
-      'Уразити вантажівку',
+      'Search squares C3–D4',
+      'Account for drift — run in with a correction',
+      'Destroy the truck',
     ],
-    sorties: [{ targetId: 'truck-open', note: 'Вантажівка на відкритій ділянці, C3–D4' }],
+    sorties: [{ targetId: 'truck-open', note: 'Truck in the open, C3–D4' }],
     targets: [
       {
         id: 'truck-open',
@@ -662,11 +662,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l10-dusk-decoys',
     index: 10,
-    title: 'Сутінки',
+    title: 'Dusk',
     brief:
-      'Вечірнє світло, довгі тіні, контраст падає. У квадратах E4–F5 стоять три ' +
-      'схожі об’єкти: один — справжня БМП, два — макети. З 100 м вони однакові. ' +
-      'З 40 м у макетів інші пропорції корпуса.',
+      'Evening light, long shadows, contrast falling away. Three similar objects sit in ' +
+      'squares E4–F5: one real APC and two mock-ups. At 100 m they are identical. ' +
+      'At 40 m the mock-ups have different body proportions.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 209663, ...MAP },
@@ -676,12 +676,12 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['E4', 'F4', 'E5', 'F5'],
     allowAngleMode: false,
     objectives: [
-      'Оглянути всі три об’єкти',
-      'Знайти той, що має башту й гусениці',
-      'Ідентифікувати ціль перед ударом',
-      'Уразити БМП',
+      'Inspect all three objects',
+      'Find the one with a turret and tracks',
+      'Identify the target before striking',
+      'Destroy the APC',
     ],
-    sorties: [{ targetId: 'apc-real', note: 'Справжня БМП серед макетів, E4–F5' }],
+    sorties: [{ targetId: 'apc-real', note: 'The real APC among mock-ups, E4–F5' }],
     targets: [
       {
         id: 'apc-real',
@@ -694,7 +694,7 @@ export const LEVELS: LevelSpec[] = [
         id: 'decoy-a',
         kind: 'decoy',
         vehicle: 'emplacement',
-        label: 'макет №1',
+        label: 'mock-up #1',
         position: [300, 170],
         headingDeg: 60,
       },
@@ -702,7 +702,7 @@ export const LEVELS: LevelSpec[] = [
         id: 'decoy-b',
         kind: 'decoy',
         vehicle: 'emplacement',
-        label: 'макет №2',
+        label: 'mock-up #2',
         position: [200, -80],
         headingDeg: 110,
         concealed: true,
@@ -713,11 +713,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l11-long-range',
     index: 11,
-    title: 'Далекий рейд',
+    title: 'Long Range',
     brief:
-      'Карта вчетверо більша, ціль за 2.5 км. Борт — 13" далекобійний: 12 000 mAh ' +
-      'і потужний передавач, але керування «через кисіль» — лаг мотора 110 мс, ' +
-      'затримка відео 140 мс. Усе робиться плавно й заздалегідь.',
+      'The map is four times larger and the target is 2.5 km out. You are on the 13" ' +
+      'long-range airframe: 12,000 mAh and a strong transmitter, but the controls feel ' +
+      'like porridge — 110 ms motor lag, 140 ms video delay. Everything smooth and early.',
     droneId: 'longrange-13',
     payloadId: 'medium',
     terrain: { seed: 887301, ...BIG_MAP },
@@ -727,11 +727,11 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['F3', 'G3', 'F4', 'G4'],
     allowAngleMode: false,
     objectives: [
-      'Пройти 2.5 км до району цілі',
-      'Стежити за рівнем сигналу — він падає з дистанцією',
-      'Уразити танк',
+      'Cover 2.5 km to the target area',
+      'Watch the signal bar — it falls off with distance',
+      'Destroy the tank',
     ],
-    sorties: [{ targetId: 'tank-far', note: 'Танк за 2.5 км, північний схід' }],
+    sorties: [{ targetId: 'tank-far', note: 'Tank 2.5 km out, north-east' }],
     targets: [
       {
         id: 'tank-far',
@@ -769,11 +769,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l12-night',
     index: 12,
-    title: 'Ніч',
+    title: 'Night',
     brief:
-      'Нічний борт: камера чорно-біла, видимість 120 м, шум утричі більший. ' +
-      'Рельєф ти радше вгадуєш, ніж бачиш. Вантажівка йде дорогою на південь — ' +
-      'знайти її можна лише низько й повільно.',
+      'Night airframe: monochrome camera, 120 m of visibility, three times the noise. ' +
+      'You guess the terrain more than you see it. A truck is running the southern road — ' +
+      'the only way to find it is low and slow.',
     droneId: 'night-8',
     payloadId: 'medium',
     terrain: { seed: 471028, ...MAP, amplitude: 13 },
@@ -783,11 +783,11 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['D6', 'E6', 'D7', 'E7'],
     allowAngleMode: false,
     objectives: [
-      'Пройти на південь у квадрати D6–E7',
-      'Літати низько — інакше нічого не побачиш',
-      'Уразити вантажівку',
+      'Push south into squares D6–E7',
+      'Fly low — otherwise you will see nothing',
+      'Destroy the truck',
     ],
-    sorties: [{ targetId: 'truck-night', note: 'Вантажівка вночі, D6–E7' }],
+    sorties: [{ targetId: 'truck-night', note: 'Truck at night, D6–E7' }],
     targets: [
       {
         id: 'truck-night',
@@ -825,11 +825,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l13-pair',
     index: 13,
-    title: 'Пара',
+    title: 'The Pair',
     brief:
-      'Два вильоти по бронетехніці. Спершу танк, потім БМП — обидві машини рухаються, ' +
-      'обидві під важким БК на 10". Запас тяги мінімальний: на розвороті ти тонеш, ' +
-      'на набір висоти йде половина заряду.',
+      'Two sorties against armour. Tank first, then the APC — both are moving, both from ' +
+      'the 10" with a heavy payload. Thrust margin is minimal: you sink in every turn, ' +
+      'and half the pack goes on the climb.',
     droneId: 'heavy-10',
     payloadId: 'heavy',
     terrain: { seed: 662119, ...MAP },
@@ -839,15 +839,15 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['E3', 'F3', 'D6', 'E6'],
     allowAngleMode: false,
     objectives: [
-      'Виліт 1: танк у квадратах E3–F3',
-      'Виліт 2: БМП у квадратах D6–E6',
-      'Обидва вильоти поспіль',
+      'Sortie 1: tank in squares E3–F3',
+      'Sortie 2: APC in squares D6–E6',
+      'Both sorties back to back',
     ],
     sorties: [
-      { targetId: 'tank-move', note: 'Виліт 1 — танк, E3–F3' },
+      { targetId: 'tank-move', note: 'Sortie 1 — tank, E3–F3' },
       {
         targetId: 'apc-move',
-        note: 'Виліт 2 — БМП, D6–E6',
+        note: 'Sortie 2 — APC, D6–E6',
         launch: { x: 720, y: -740, headingDeg: 315 },
       },
     ],
@@ -904,11 +904,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l14-fog-convoy',
     index: 14,
-    title: 'Туман',
+    title: 'Fog',
     brief:
-      'Світанок, видимість 700 м, туман з’їдає горизонт. Два вильоти: вантажівка ' +
-      'і квадроцикл. У тумані орієнтуватись можна лише по дорогах і лісосмугах — ' +
-      'компас і пам’ять про брифінг важать більше, ніж очі.',
+      'Dawn, 700 m of visibility, fog eating the horizon. Two sorties: a truck and a ' +
+      'quad bike. In fog the only references are roads and treelines — the compass and ' +
+      'what you remember from the briefing matter more than your eyes.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 158427, ...MAP },
@@ -918,15 +918,15 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['E3', 'F3', 'F5', 'G5'],
     allowAngleMode: false,
     objectives: [
-      'Виліт 1: вантажівка в квадратах E3–F3',
-      'Виліт 2: квадроцикл у квадратах F5–G5',
-      'Тримати висоту — у тумані рельєф видно пізно',
+      'Sortie 1: truck in squares E3–F3',
+      'Sortie 2: quad bike in squares F5–G5',
+      'Keep your altitude — in fog the terrain shows up late',
     ],
     sorties: [
-      { targetId: 'truck-fog', note: 'Виліт 1 — вантажівка, E3–F3' },
+      { targetId: 'truck-fog', note: 'Sortie 1 — truck, E3–F3' },
       {
         targetId: 'quad-fog',
-        note: 'Виліт 2 — квадроцикл, F5–G5',
+        note: 'Sortie 2 — quad bike, F5–G5',
         launch: { x: -180, y: -760, headingDeg: 20 },
       },
     ],
@@ -983,11 +983,11 @@ export const LEVELS: LevelSpec[] = [
   {
     id: 'l15-final',
     index: 15,
-    title: 'Все разом',
+    title: 'Everything at Once',
     brief:
-      'Фінал. Ніч, вітер, об’ємний БК на 10" і три вильоти поспіль: БМП, танк, ' +
-      'вантажівка. Найважчий борт кампанії у найгірших умовах. Один провал — ' +
-      'і всі три вильоти спочатку.',
+      'The finale. Night, wind, a bulky payload on the 10" and three sorties back to ' +
+      'back: APC, tank, truck. The heaviest airframe of the campaign in the worst ' +
+      'conditions. One failure and all three sorties start again.',
     droneId: 'heavy-10',
     payloadId: 'bulky',
     terrain: { seed: 995003, ...MAP, amplitude: 19 },
@@ -997,21 +997,21 @@ export const LEVELS: LevelSpec[] = [
     searchCells: ['C3', 'D3', 'E5', 'F5', 'F7', 'G7'],
     allowAngleMode: false,
     objectives: [
-      'Виліт 1: БМП, квадрати C3–D3',
-      'Виліт 2: танк, квадрати E5–F5',
-      'Виліт 3: вантажівка, квадрати F7–G7',
-      'Три вильоти поспіль, вночі, з вітром',
+      'Sortie 1: APC, squares C3–D3',
+      'Sortie 2: tank, squares E5–F5',
+      'Sortie 3: truck, squares F7–G7',
+      'Three sorties back to back, at night, in wind',
     ],
     sorties: [
-      { targetId: 'apc-final', note: 'Виліт 1 — БМП, C3–D3' },
+      { targetId: 'apc-final', note: 'Sortie 1 — APC, C3–D3' },
       {
         targetId: 'tank-final',
-        note: 'Виліт 2 — танк, E5–F5',
+        note: 'Sortie 2 — tank, E5–F5',
         launch: { x: 760, y: 700, headingDeg: 215 },
       },
       {
         targetId: 'truck-final',
-        note: 'Виліт 3 — вантажівка, F7–G7',
+        note: 'Sortie 3 — truck, F7–G7',
         launch: { x: -760, y: 720, headingDeg: 135 },
       },
     ],

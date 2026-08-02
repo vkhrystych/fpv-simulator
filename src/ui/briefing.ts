@@ -37,26 +37,26 @@ export class Briefing {
     const right = document.createElement('div')
     right.className = 'briefing-text'
     right.innerHTML = `
-      <div class="tag">РІВЕНЬ ${String(level.index).padStart(2, '0')} з ${TOTAL_LEVELS}</div>
+      <div class="tag">LEVEL ${String(level.index).padStart(2, '0')} OF ${TOTAL_LEVELS}</div>
       <h1>${level.title}</h1>
       <p class="brief">${level.brief}</p>
       ${this.sortieBlock(level, sortieIndex)}
-      <h2>Завдання</h2>
+      <h2>Objectives</h2>
       <ol>${level.objectives.map((o) => `<li>${o}</li>`).join('')}</ol>
-      <h2>Борт</h2>
+      <h2>Aircraft</h2>
       <table>
-        <tr><td>Дрон</td><td>${DRONES[level.droneId].label}</td></tr>
-        <tr><td>Навантаження</td><td>${PAYLOADS[level.payloadId].label}</td></tr>
-        <tr><td>Зведення</td><td>${PAYLOADS[level.payloadId].armDistance} м від зльоту</td></tr>
-        <tr><td>Вітер</td><td>${level.weather.windSpeed.toFixed(1)} м/с з ${Math.round(level.weather.windFromDeg)}°</td></tr>
-        <tr><td>Час</td><td>${Math.floor(level.timeLimitS / 60)} хв</td></tr>
-        <tr><td>Режим</td><td>${level.allowAngleMode ? 'ANGLE дозволено' : 'ACRO'}</td></tr>
+        <tr><td>Drone</td><td>${DRONES[level.droneId].label}</td></tr>
+        <tr><td>Payload</td><td>${PAYLOADS[level.payloadId].label}</td></tr>
+        <tr><td>Arming</td><td>${PAYLOADS[level.payloadId].armDistance} m from launch</td></tr>
+        <tr><td>Wind</td><td>${level.weather.windSpeed.toFixed(1)} m/s from ${Math.round(level.weather.windFromDeg)}°</td></tr>
+        <tr><td>Time limit</td><td>${Math.floor(level.timeLimitS / 60)} min</td></tr>
+        <tr><td>Mode</td><td>${level.allowAngleMode ? 'ANGLE allowed' : 'ACRO'}</td></tr>
       </table>
-      <p class="warn">Після зльоту мапа недоступна. Запам'ятай квадрати.</p>
+      <p class="warn">The map is gone once you lift off. Memorise the squares.</p>
     `
 
     const start = document.createElement('button')
-    start.textContent = level.sorties.length > 1 ? `ЗЛІТ — ВИЛІТ ${sortieIndex + 1}` : 'ЗЛІТ'
+    start.textContent = level.sorties.length > 1 ? `LAUNCH — SORTIE ${sortieIndex + 1}` : 'LAUNCH'
     start.className = 'primary'
     start.onclick = () => {
       this.hide()
@@ -67,10 +67,10 @@ export class Briefing {
     const help = document.createElement('p')
     help.className = 'help'
     help.textContent =
-      'Геймпад: лівий стік — газ/рискання, правий — тангаж/крен, A — арм. ' +
-      'Клавіатура: W/S — газ, A/D — рискання, стрілки — тангаж/крен, Space — арм, R — рестарт. ' +
-      'У клавіатури немає аналогової осі, тому відпущений газ сам повертається до зависання — ' +
-      'на геймпаді газ справжній, абсолютний.'
+      'Gamepad: left stick — throttle/yaw, right stick — pitch/roll, A — arm. ' +
+      'Keyboard: W/S — throttle, A/D — yaw, arrows — pitch/roll, Space — arm, R — restart. ' +
+      'A keyboard has no analogue axis, so a released throttle drifts back to hover — ' +
+      'on a gamepad the throttle is true and absolute.'
     right.appendChild(help)
 
     this.root.append(left, right)
@@ -94,9 +94,9 @@ export class Briefing {
       })
       .join('')
     return `
-      <h2>Вильоти (${sortieIndex + 1} з ${level.sorties.length})</h2>
+      <h2>Sorties (${sortieIndex + 1} of ${level.sorties.length})</h2>
       <ul class="sorties">${rows}</ul>
-      <p class="warn">Провал будь-якого вильоту повертає рівень до першого.</p>`
+      <p class="warn">Failing any sortie restarts the level from the first one.</p>`
   }
 
   /** Мапа малюється з тієї самої функції рельєфу, що й фізика — брехати нічим. */
@@ -227,7 +227,7 @@ export class Briefing {
     ctx.lineTo(24, baseY - 11)
     ctx.lineTo(28, baseY - 6)
     ctx.stroke()
-    ctx.fillText('Пн', 34, baseY + 4)
+    ctx.fillText('N', 34, baseY + 4)
 
     // вітер: стрілка показує, КУДИ дме
     const wa = (level.weather.windFromDeg * Math.PI) / 180
@@ -245,7 +245,7 @@ export class Briefing {
     ctx.lineTo(wx + dx * 13 - dx * 6 + dy * 4, baseY - dy * 13 + dy * 6 + dx * 4)
     ctx.stroke()
     ctx.fillStyle = 'rgba(30,35,30,0.95)'
-    ctx.fillText(`вітер ${level.weather.windSpeed.toFixed(1)} м/с`, wx + 22, baseY + 4)
+    ctx.fillText(`wind ${level.weather.windSpeed.toFixed(1)} m/s`, wx + 22, baseY + 4)
 
     // масштаб
     const barM = 500
@@ -261,7 +261,7 @@ export class Briefing {
     ctx.moveTo(sx + barPx, baseY + 2)
     ctx.lineTo(sx + barPx, baseY + 10)
     ctx.stroke()
-    ctx.fillText(`${barM} м`, sx + barPx / 2 - 18, baseY - 4)
+    ctx.fillText(`${barM} m`, sx + barPx / 2 - 18, baseY - 4)
 
     return canvas
   }
@@ -270,9 +270,9 @@ export class Briefing {
     const d = document.createElement('div')
     d.className = 'legend'
     d.innerHTML = `
-      <span><i class="sq search"></i> зона ймовірної цілі: ${level.searchCells.join(', ')}</span>
-      <span><i class="sq launch"></i> точка зльоту</span>
-      <span><i class="sq road"></i> ґрунтівка</span>
+      <span><i class="sq search"></i> probable target area: ${level.searchCells.join(', ')}</span>
+      <span><i class="sq launch"></i> launch point</span>
+      <span><i class="sq road"></i> dirt road</span>
     `
     return d
   }
