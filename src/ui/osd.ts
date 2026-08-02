@@ -82,9 +82,13 @@ export class Osd {
       `${mins}:${String(secs).padStart(2, '0')} / ${Math.floor(mission.level.timeLimitS / 60)}:` +
       `${String(mission.level.timeLimitS % 60).padStart(2, '0')}\n` +
       `SIG ${'▮'.repeat(Math.max(0, Math.round(mission.signal * 5))).padEnd(5, '▯')}`
+    // газ обов'язково на екрані: без аналогового стіка пілот інакше не знає,
+    // де він його лишив — а саме це і топило керування
+    const thr = Math.round(Math.max(...t.motorCommands) * 100)
     this.bl.textContent =
       `ALT ${Math.round(mission.altitude)}\n` +
-      `SPD ${Math.round(t.speed * 3.6)}`
+      `SPD ${Math.round(t.speed * 3.6)}\n` +
+      `THR ${String(thr).padStart(3)}%  ${'▮'.repeat(Math.round(thr / 12.5)).padEnd(8, '▯')}`
     this.br.textContent =
       `${Math.round(drone.distanceFromLaunch)} м${mission.armed ? '  A' : '  ·'}\n` +
       `${drone.state.landed ? 'GND' : 'AIR'}${drone.telemetry.saturation > 0.2 ? '  SAT' : ''}`

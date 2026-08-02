@@ -150,9 +150,19 @@ export class Drone {
     return this.spec.maxThrustN / (this.totalMass * this.env.gravity)
   }
 
-  /** Газ, потрібний для зависання (приблизно, без урахування просадки). */
+  /** Газ, потрібний для зависання за номінальної напруги. */
   get hoverThrottle(): number {
     return clamp(Math.sqrt(1 / Math.max(this.thrustToWeight, 1e-6)), 0, 1)
+  }
+
+  /**
+   * Газ зависання ЗАРАЗ, з урахуванням напруги: стеля обертів масштабується
+   * напругою, тому на свіжому акумуляторі зависання настає на нижчому газі,
+   * а наприкінці польоту — на вищому.
+   */
+  get hoverThrottleNow(): number {
+    const ceiling = clamp(this.battery.voltageRatio, 0.1, 1.1)
+    return clamp(this.hoverThrottle / ceiling, 0, 1)
   }
 
   get distanceFromLaunch(): number {

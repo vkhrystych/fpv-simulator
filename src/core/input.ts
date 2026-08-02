@@ -1,5 +1,26 @@
-import { clamp } from '../flight/math'
+import { clamp, smoothing } from '../flight/math'
 import type { ControlInput } from '../flight/types'
+
+/**
+ * Крок клавіатурного газу. Клавіатура не має аналогової осі, тому без асисту
+ * газ «залипає» там, де його лишили: відпустив W на 100% — і дрон із запасом
+ * тяги 4:1 просто йде в небо, а вперед майже не рухається.
+ * Тому: W/S відхиляють газ, а без них він плавно повертається до газу зависання
+ * (уже скомпенсованого нахилом). На геймпаді газ лишається справжнім абсолютним.
+ */
+export function stepKeyboardThrottle(
+  current: number,
+  up: number,
+  down: number,
+  hoverBias: number,
+  dt: number,
+  rate: number,
+): number {
+  if (up > 0 || down > 0) {
+    return clamp(current + (up - down) * rate * dt, 0, 1)
+  }
+  return clamp(current + (clamp(hoverBias, 0, 1) - current) * smoothing(dt, 0.35), 0, 1)
+}
 
 /**
  * Вхід пілота: геймпад (mode 2) або клавіатура.
@@ -21,7 +42,12 @@ export class InputManager {
   /** Мертва зона стіків геймпада. */
   deadzone = 0.06
   /** Швидкість набору газу з клавіатури, частка за секунду. */
-  throttleRate = 1.1
+  throttleRate = 0.85
+  /**
+   * Газ, до якого повертається клавіатурний стік у нейтралі.
+   * Головний цикл щокадру кладе сюди газ зависання з поправкою на нахил.
+   */
+  hoverBias = 0.5
 
   constructor(private target: EventTarget = window) {
     this.target.addEventListener('keydown', this.onKeyDown as EventListener)
@@ -94,7 +120,7 @@ export class InputManager {
       const k = (code: string) => (this.keys.has(code) ? 1 : 0)
       const up = k('KeyW') + k('ShiftLeft') * 0.6
       const down = k('KeyS')
-      this.throttle = clamp(this.throttle + (up - down) * this.throttleRate * dt, 0, 1)
+      this.throttle = stepKeyboardThrottle(this.throttle, up, down, this.hoverBias, dt, this.throttleRate)
       yaw = k('KeyD') - k('KeyA')
       roll = k('ArrowRight') - k('ArrowLeft')
       pitch = k('ArrowUp') - k('ArrowDown')
