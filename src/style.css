@@ -146,3 +146,15 @@ button.primary { border-color: #7dff8a; color: #7dff8a; }
   .screen { flex-direction: column; gap: 24px; }
   .briefing-map canvas { max-width: 90vw; }
 }
+
+/* ── Вильоти рівня ────────────────────────────────────────────── */
+.sorties {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.sorties li { color: #6f7a69; }
+.sorties li.now { color: #7dff8a; }
+.sorties li.done { color: #8b9585; text-decoration: line-through; }

@@ -1,6 +1,9 @@
 import { GRID_COLS, GRID_ROWS, Terrain, gridCellSize } from '../level/terrain'
 import type { LevelSpec } from '../level/types'
 import { DRONES, PAYLOADS } from '../drones'
+import { LEVELS } from '../level/levels'
+
+const TOTAL_LEVELS = LEVELS.length
 
 /**
  * Брифінг: топографічна мапа з сіткою і зоною ймовірної цілі.
@@ -21,22 +24,23 @@ export class Briefing {
     parent.appendChild(this.root)
   }
 
-  show(level: LevelSpec, terrain: Terrain, onStart: () => void): void {
+  show(level: LevelSpec, terrain: Terrain, onStart: () => void, sortieIndex = 0): void {
     this.onStart = onStart
     this.root.innerHTML = ''
     this.root.classList.remove('hidden')
 
     const left = document.createElement('div')
     left.className = 'briefing-map'
-    left.appendChild(this.drawMap(level, terrain))
+    left.appendChild(this.drawMap(level, terrain, sortieIndex))
     left.appendChild(this.legend(level))
 
     const right = document.createElement('div')
     right.className = 'briefing-text'
     right.innerHTML = `
-      <div class="tag">ВИЛІТ ${String(level.index).padStart(2, '0')}</div>
+      <div class="tag">РІВЕНЬ ${String(level.index).padStart(2, '0')} з ${TOTAL_LEVELS}</div>
       <h1>${level.title}</h1>
       <p class="brief">${level.brief}</p>
+      ${this.sortieBlock(level, sortieIndex)}
       <h2>Завдання</h2>
       <ol>${level.objectives.map((o) => `<li>${o}</li>`).join('')}</ol>
       <h2>Борт</h2>
@@ -52,7 +56,7 @@ export class Briefing {
     `
 
     const start = document.createElement('button')
-    start.textContent = 'ЗЛІТ'
+    start.textContent = level.sorties.length > 1 ? `ЗЛІТ — ВИЛІТ ${sortieIndex + 1}` : 'ЗЛІТ'
     start.className = 'primary'
     start.onclick = () => {
       this.hide()
@@ -76,8 +80,27 @@ export class Briefing {
     this.root.classList.add('hidden')
   }
 
+  /**
+   * Список вильотів рівня. Гравець мусить бачити наперед, скільки заходів
+   * попереду і що провал будь-якого відкидає на самий початок рівня.
+   */
+  private sortieBlock(level: LevelSpec, sortieIndex: number): string {
+    if (level.sorties.length < 2) return ''
+    const rows = level.sorties
+      .map((s, i) => {
+        const state = i < sortieIndex ? 'done' : i === sortieIndex ? 'now' : 'todo'
+        const mark = state === 'done' ? '✓' : state === 'now' ? '▸' : '·'
+        return `<li class="${state}">${mark} ${s.note}</li>`
+      })
+      .join('')
+    return `
+      <h2>Вильоти (${sortieIndex + 1} з ${level.sorties.length})</h2>
+      <ul class="sorties">${rows}</ul>
+      <p class="warn">Провал будь-якого вильоту повертає рівень до першого.</p>`
+  }
+
   /** Мапа малюється з тієї самої функції рельєфу, що й фізика — брехати нічим. */
-  private drawMap(level: LevelSpec, terrain: Terrain): HTMLCanvasElement {
+  private drawMap(level: LevelSpec, terrain: Terrain, sortieIndex = 0): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
     canvas.width = MAP_PX
     canvas.height = MAP_PX + PLATE_H
@@ -171,7 +194,8 @@ export class Briefing {
     }
 
     // точка зльоту
-    const [lx, ly] = toPx(level.launch.x, level.launch.y)
+    const launch = level.sorties[sortieIndex]?.launch ?? level.launch
+    const [lx, ly] = toPx(launch.x, launch.y)
     ctx.strokeStyle = '#1d5c2a'
     ctx.lineWidth = 2
     ctx.beginPath()
@@ -179,7 +203,7 @@ export class Briefing {
     ctx.stroke()
     ctx.beginPath()
     ctx.moveTo(lx, ly)
-    const hdg = (level.launch.headingDeg * Math.PI) / 180
+    const hdg = (launch.headingDeg * Math.PI) / 180
     ctx.lineTo(lx + Math.sin(hdg) * 18, ly - Math.cos(hdg) * 18)
     ctx.stroke()
 

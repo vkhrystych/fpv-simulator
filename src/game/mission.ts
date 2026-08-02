@@ -2,7 +2,7 @@ import type { Drone } from '../flight/drone'
 import { clamp, qrotate, v3, vdot, vlen, vnorm, vsub, type Vec3 } from '../flight/math'
 import { degToRad } from '../flight/rates'
 import { Terrain, gridLabel } from '../level/terrain'
-import type { FailReason, LevelSpec, MissionOutcome } from '../level/types'
+import type { FailReason, LevelSpec, MissionOutcome, SortieSpec } from '../level/types'
 import { Target } from './targets'
 
 /** Скільки секунд ціль має протриматись у кадрі, щоб зарахувалась ідентифікація. */
@@ -51,14 +51,33 @@ export class Mission {
     readonly level: LevelSpec,
     readonly terrain: Terrain,
     private drone: Drone,
+    /** індекс вильоту в межах рівня */
+    readonly sortieIndex = 0,
   ) {
     this.targets = level.targets.map((t) => new Target(t, terrain))
+    // цілі попередніх вильотів уже уражені — прибираємо їх зі світу,
+    // щоб не можна було «перезарахувати» те саме двічі
+    for (let i = 0; i < sortieIndex && i < level.sorties.length; i++) {
+      const done = this.targets.find((t) => t.spec.id === level.sorties[i].targetId)
+      if (done) done.destroyed = true
+    }
     this.lastPosition = { ...drone.state.position }
   }
 
+  get sortie(): SortieSpec {
+    const s = this.level.sorties[this.sortieIndex]
+    if (!s) throw new Error(`level ${this.level.id}: немає вильоту ${this.sortieIndex}`)
+    return s
+  }
+
+  /** Чи це останній виліт рівня. */
+  get isFinalSortie(): boolean {
+    return this.sortieIndex >= this.level.sorties.length - 1
+  }
+
   get primary(): Target {
-    const t = this.targets.find((x) => x.spec.id === this.level.primaryTargetId)
-    if (!t) throw new Error(`level ${this.level.id}: немає цілі ${this.level.primaryTargetId}`)
+    const t = this.targets.find((x) => x.spec.id === this.sortie.targetId)
+    if (!t) throw new Error(`level ${this.level.id}: немає цілі ${this.sortie.targetId}`)
     return t
   }
 
@@ -178,7 +197,7 @@ export class Mission {
   private checkImpact(from: Vec3, to: Vec3): MissionResult | null {
     for (const t of this.targets) {
       if (t.destroyed) continue
-      const r = t.spec.hitRadius
+      const r = t.hitRadius
       if (segmentSphereHit(from, to, t.aimPoint, r)) {
         t.destroyed = true
         this.hitTargetId = t.spec.id
@@ -186,7 +205,7 @@ export class Mission {
         if (t.spec.kind === 'civilian') return this.fail('MISIDENTIFIED')
         if (t.spec.kind === 'decoy') return this.fail('DECOY')
         if (!this.armed) return this.fail('NOT_ARMED')
-        if (t.spec.id !== this.level.primaryTargetId) return this.fail('DECOY')
+        if (t.spec.id !== this.sortie.targetId) return this.fail('DECOY')
 
         this.outcome = 'success'
         return this.result

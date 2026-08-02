@@ -37,6 +37,8 @@ interface Runtime {
 
 let runtime: Runtime | null = null
 let levelIndex = 0
+/** індекс поточного вильоту в межах рівня; провал відкидає на нуль */
+let sortieIndex = 0
 let finished: MissionResult | null = null
 let lastTime = performance.now()
 
@@ -44,10 +46,12 @@ function sizeOf(): [number, number] {
   return [Math.max(1, innerWidth), Math.max(1, innerHeight)]
 }
 
-function loadLevel(index: number): void {
-  levelIndex = Math.min(index, LEVELS.length - 1)
+/** Показує брифінг конкретного вильоту рівня. */
+function loadSortie(index: number, sortie = 0): void {
+  levelIndex = Math.min(Math.max(index, 0), LEVELS.length - 1)
   const level = LEVELS[levelIndex]
-  briefing.show(level, createSession(level).terrain, () => startFlight(level))
+  sortieIndex = Math.min(Math.max(sortie, 0), level.sorties.length - 1)
+  briefing.show(level, createSession(level, sortieIndex).terrain, () => startFlight(level), sortieIndex)
   osd.root.classList.add('hidden')
 }
 
@@ -55,7 +59,7 @@ function startFlight(level: (typeof LEVELS)[number]): void {
   runtime?.video.dispose()
   runtime?.vehicles.dispose()
 
-  const session = createSession(level)
+  const session = createSession(level, sortieIndex)
   const [w, h] = sizeOf()
   renderer.setSize(w, h, false)
 
@@ -85,7 +89,9 @@ function startFlight(level: (typeof LEVELS)[number]): void {
   lastTime = performance.now()
 }
 
-function restart(): void {
+/** Провал будь-якого вильоту повертає рівень до першого. */
+function restartLevel(): void {
+  sortieIndex = 0
   startFlight(LEVELS[levelIndex])
 }
 
@@ -108,7 +114,7 @@ function frame(now: number): void {
   const { drone, mission } = session
 
   if (input.restartRequested) {
-    restart()
+    restartLevel()
     return
   }
 
@@ -131,9 +137,17 @@ function frame(now: number): void {
     if (result.outcome !== 'flying') {
       finished = result
       audio.impact()
-      debrief.show(session.level, result, restart, result.outcome === 'success' && levelIndex + 1 < LEVELS.length
-        ? () => loadLevel(levelIndex + 1)
-        : undefined)
+
+      const total = session.level.sorties.length
+      const moreSorties = result.outcome === 'success' && sortieIndex + 1 < total
+      const moreLevels = result.outcome === 'success' && !moreSorties && levelIndex + 1 < LEVELS.length
+      const onNext = moreSorties
+        ? () => loadSortie(levelIndex, sortieIndex + 1)
+        : moreLevels
+          ? () => loadSortie(levelIndex + 1, 0)
+          : undefined
+
+      debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total })
       osd.root.classList.add('hidden')
     }
   }
@@ -155,5 +169,5 @@ const params = new URLSearchParams(location.search)
 const sens = Number(params.get('sens'))
 if (Number.isFinite(sens) && sens > 0) input.sensitivity = sens
 const requested = Number(params.get('level'))
-loadLevel(Number.isFinite(requested) && requested > 0 ? requested - 1 : 0)
+loadSortie(Number.isFinite(requested) && requested > 0 ? requested - 1 : 0, 0)
 requestAnimationFrame(frame)

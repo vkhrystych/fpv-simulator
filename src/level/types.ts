@@ -13,6 +13,21 @@ export interface WeatherSpec {
   fogDensity: number
 }
 
+/**
+ * Один виліт усередині рівня. Рівень із кількох вильотів проходиться поспіль:
+ * зафейлив будь-який — рівень починається спочатку, з першого вильоту.
+ * Кожен виліт — новий борт із повним акумулятором, тому вибір висоти й швидкості
+ * доводиться робити щоразу заново.
+ */
+export interface SortieSpec {
+  /** ціль цього вильоту; влучання саме в неї = виліт виконано */
+  targetId: string
+  /** рядок у брифінгу для цього вильоту */
+  note: string
+  /** точка зльоту, якщо відрізняється від рівневої */
+  launch?: { x: number; y: number; headingDeg: number }
+}
+
 export interface LevelSpec {
   id: string
   index: number
@@ -27,8 +42,8 @@ export interface LevelSpec {
   /** ліміт часу на виліт, с */
   timeLimitS: number
   targets: TargetSpec[]
-  /** id призначеної цілі — влучання саме в неї = успіх */
-  primaryTargetId: string
+  /** вильоти рівня по черзі; майже завжди один, але буває 2–3 */
+  sorties: SortieSpec[]
   /** квадрати ймовірного розташування — усе, що гравець бачить у брифінгу */
   searchCells: string[]
   /** режим польоту: тренування дозволяє ANGLE */

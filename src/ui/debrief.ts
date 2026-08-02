@@ -25,16 +25,35 @@ export class Debrief {
     parent.appendChild(this.root)
   }
 
-  show(level: LevelSpec, result: MissionResult, onRetry: () => void, onNext?: () => void): void {
+  show(
+    level: LevelSpec,
+    result: MissionResult,
+    onRetry: () => void,
+    onNext?: () => void,
+    sortie = { index: 0, total: 1 },
+  ): void {
     const ok = result.outcome === 'success'
+    const more = ok && sortie.index + 1 < sortie.total
     const head = ok
-      ? { title: 'ЦІЛЬ УРАЖЕНО', note: `${level.title} — виконано.` }
-      : REASONS[result.reason ?? 'CRASHED']
+      ? more
+        ? {
+            title: `ВИЛІТ ${sortie.index + 1} ВИКОНАНО`,
+            note: `Лишилось вильотів: ${sortie.total - sortie.index - 1}. Наступний борт готовий.`,
+          }
+        : { title: 'ЦІЛЬ УРАЖЕНО', note: `${level.title} — рівень пройдено.` }
+      : {
+          ...REASONS[result.reason ?? 'CRASHED'],
+          note:
+            REASONS[result.reason ?? 'CRASHED'].note +
+            (sortie.total > 1 ? ' Рівень починається з першого вильоту.' : ''),
+        }
 
     const s = result.stats
     this.root.innerHTML = `
       <div class="debrief-card ${ok ? 'ok' : 'fail'}">
-        <div class="tag">ВИЛІТ ${String(level.index).padStart(2, '0')}</div>
+        <div class="tag">РІВЕНЬ ${String(level.index).padStart(2, '0')}${
+          sortie.total > 1 ? ` · ВИЛІТ ${sortie.index + 1}/${sortie.total}` : ''
+        }</div>
         <h1>${head.title}</h1>
         <p>${head.note}</p>
         <table>
@@ -50,7 +69,7 @@ export class Debrief {
     row.className = 'buttons'
 
     const retry = document.createElement('button')
-    retry.textContent = 'ПОВТОРИТИ'
+    retry.textContent = ok || sortie.total === 1 ? 'ПОВТОРИТИ' : 'РІВЕНЬ СПОЧАТКУ'
     retry.onclick = () => {
       this.hide()
       onRetry()
@@ -60,7 +79,7 @@ export class Debrief {
     if (ok && onNext) {
       const next = document.createElement('button')
       next.className = 'primary'
-      next.textContent = 'НАСТУПНИЙ ВИЛІТ'
+      next.textContent = more ? 'НАСТУПНИЙ ВИЛІТ' : 'НАСТУПНИЙ РІВЕНЬ'
       next.onclick = () => {
         this.hide()
         onNext()

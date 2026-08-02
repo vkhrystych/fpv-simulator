@@ -2,77 +2,132 @@ import * as THREE from 'three'
 import type { Target } from '../game/targets'
 
 /**
- * Силуети машин. Розрізняти їх — це і є геймплей, тому пропорції та колір
- * зроблені навмисно схожими: ворожа й цивільна вантажівки відрізняються
- * довжиною кузова, кольором тенту та наявністю причепа, і більше нічим.
+ * Силуети техніки. Розрізняти їх — це і є геймплей, тому форми зроблені
+ * навмисно близькими: гусенична машина від колісної відрізняється низьким
+ * корпусом, гусеницями та баштою, а ворожа вантажівка від цивільної —
+ * лише довжиною кузова, кольором тенту та наявністю причепа.
+ * З 200 м усе це — темні плями; різниця з'являється метрів із сорока.
  */
 
-interface VehicleStyle {
-  cab: number
-  body: number
-  trailer: boolean
-  color: number
-  cabColor: number
-}
+const TARGET_PAINT = 0x4b5240
+const TARGET_CAB = 0x434a3a
+const CIVILIAN_PAINT = 0xb9b3a4
+const CIVILIAN_CAB = 0x8d99a6
+const DECOY_PAINT = 0x555b48
+const RUBBER = 0x1c1c1c
 
-function styleFor(t: Target): VehicleStyle {
-  const len = t.spec.length
+function paintFor(t: Target): { body: number; cab: number } {
   switch (t.spec.kind) {
     case 'target':
-      return { cab: len * 0.28, body: len * 0.72, trailer: false, color: 0x4b5240, cabColor: 0x434a3a }
+      return { body: TARGET_PAINT, cab: TARGET_CAB }
     case 'civilian':
-      return len < 5
-        ? { cab: len * 0.55, body: len * 0.45, trailer: false, color: 0x9aa2a6, cabColor: 0x9aa2a6 }
-        : { cab: len * 0.3, body: len * 0.7, trailer: true, color: 0xb9b3a4, cabColor: 0x8d99a6 }
+      return { body: CIVILIAN_PAINT, cab: CIVILIAN_CAB }
     case 'decoy':
-      // макет: ті самі габарити, але спрощена «коробка» без кабіни
-      return { cab: len * 0.12, body: len * 0.88, trailer: false, color: 0x555b48, cabColor: 0x555b48 }
+      return { body: DECOY_PAINT, cab: DECOY_PAINT }
+  }
+}
+
+/** Гусенична машина: низький корпус, гусениці по бортах, башта. */
+function buildTracked(g: THREE.Group, t: Target, bodyMat: THREE.Material): void {
+  const { width } = t.profile
+  const len = t.length
+  const h = t.height
+
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(width * 0.82, len * 0.95, h * 0.45), bodyMat)
+  hull.position.set(0, 0, h * 0.42)
+  g.add(hull)
+
+  // скошена лобова деталь — головна ознака бронетехніки згори
+  const glacis = new THREE.Mesh(new THREE.BoxGeometry(width * 0.8, len * 0.3, h * 0.22), bodyMat)
+  glacis.position.set(0, len * 0.34, h * 0.28)
+  glacis.rotation.x = -0.5
+  g.add(glacis)
+
+  const trackMat = new THREE.MeshLambertMaterial({ color: RUBBER })
+  for (const side of [-1, 1]) {
+    const track = new THREE.Mesh(new THREE.BoxGeometry(width * 0.2, len * 0.98, h * 0.3), trackMat)
+    track.position.set((side * width) / 2.3, 0, h * 0.16)
+    g.add(track)
+  }
+
+  if (t.profile.turret) {
+    const turret = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.3, width * 0.34, h * 0.32, 8), bodyMat)
+    turret.rotation.x = Math.PI / 2
+    turret.position.set(0, -len * 0.06, h * 0.78)
+    g.add(turret)
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, len * 0.55, 6), bodyMat)
+    barrel.rotation.x = Math.PI / 2
+    barrel.position.set(0, len * 0.24, h * 0.82)
+    g.add(barrel)
+  }
+}
+
+/** Колісна машина: кабіна + кузов, за потреби причіп. */
+function buildWheeled(g: THREE.Group, t: Target, bodyMat: THREE.Material, cabMat: THREE.Material): void {
+  const { width } = t.profile
+  const len = t.length
+  const h = t.height
+  const twoBox = len > 4.8
+
+  if (twoBox) {
+    const cabLen = len * 0.3
+    const bodyLen = len * 0.7
+    const body = new THREE.Mesh(new THREE.BoxGeometry(width, bodyLen, h * 0.7), bodyMat)
+    body.position.set(0, -cabLen / 2, h * 0.55)
+    g.add(body)
+
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, cabLen, h * 0.55), cabMat)
+    cab.position.set(0, bodyLen / 2, h * 0.4)
+    g.add(cab)
+
+    // причіп — ознака цивільної машини
+    if (t.spec.kind === 'civilian' && len > 5.4) {
+      const trailer = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, bodyLen * 0.8, h * 0.55), bodyMat)
+      trailer.position.set(0, -bodyLen - cabLen * 0.6, h * 0.45)
+      g.add(trailer)
+    }
+  } else {
+    // мотоцикл, квадроцикл, легковик — один суцільний корпус
+    const body = new THREE.Mesh(new THREE.BoxGeometry(width, len * 0.85, h * 0.5), bodyMat)
+    body.position.set(0, 0, h * 0.55)
+    g.add(body)
+    const rider = new THREE.Mesh(new THREE.BoxGeometry(width * 0.55, len * 0.3, h * 0.4), cabMat)
+    rider.position.set(0, -len * 0.05, h * 0.9)
+    g.add(rider)
+  }
+
+  const wheelR = Math.min(h * 0.19, 0.55)
+  const wheel = new THREE.CylinderGeometry(wheelR, wheelR, Math.min(0.35, width * 0.28), 8)
+  wheel.rotateZ(Math.PI / 2)
+  const wheelMat = new THREE.MeshLambertMaterial({ color: RUBBER })
+  const axles = len < 3 ? 2 : len > 6 ? 3 : 2
+  for (let i = 0; i < axles; i++) {
+    const y = len * 0.36 - (i / Math.max(1, axles - 1)) * len * 0.72
+    for (const side of [-1, 1]) {
+      const w = new THREE.Mesh(wheel, wheelMat)
+      w.position.set((side * width) / 2, y, wheelR)
+      g.add(w)
+    }
   }
 }
 
 export function buildVehicle(target: Target): THREE.Group {
   const g = new THREE.Group()
-  const s = styleFor(target)
-  const h = target.spec.height
-  const width = Math.min(2.6, h * 0.85)
+  const paint = paintFor(target)
+  const bodyMat = new THREE.MeshLambertMaterial({ color: paint.body })
+  const cabMat = new THREE.MeshLambertMaterial({ color: paint.cab })
 
-  const bodyMat = new THREE.MeshLambertMaterial({ color: s.color })
-  const cabMat = new THREE.MeshLambertMaterial({ color: s.cabColor })
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1e1e1e })
-
-  const body = new THREE.Mesh(new THREE.BoxGeometry(width, s.body, h * 0.7), bodyMat)
-  body.position.set(0, -s.cab / 2, h * 0.55)
-  g.add(body)
-
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, s.cab, h * 0.55), cabMat)
-  cab.position.set(0, s.body / 2, h * 0.4)
-  g.add(cab)
-
-  if (s.trailer) {
-    const tr = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, s.body * 0.8, h * 0.55), bodyMat)
-    tr.position.set(0, -s.body - s.cab * 0.6, h * 0.45)
-    g.add(tr)
-  }
-
-  const wheel = new THREE.CylinderGeometry(h * 0.19, h * 0.19, 0.35, 8)
-  wheel.rotateZ(Math.PI / 2)
-  const axles = s.trailer ? 4 : 3
-  for (let i = 0; i < axles; i++) {
-    const y = s.body / 2 - (i / Math.max(1, axles - 1)) * (s.body + (s.trailer ? s.body * 0.8 : 0))
-    for (const side of [-1, 1]) {
-      const w = new THREE.Mesh(wheel, wheelMat)
-      w.position.set((side * width) / 2, y, h * 0.19)
-      g.add(w)
-    }
-  }
+  if (target.profile.tracked) buildTracked(g, target, bodyMat)
+  else buildWheeled(g, target, bodyMat, cabMat)
 
   // маскувальна сітка: розмиває силует, поки не підлетиш близько
   if (target.spec.concealed) {
     const net = new THREE.Mesh(
-      new THREE.BoxGeometry(width * 1.5, target.spec.length * 1.1, h * 1.05),
+      new THREE.BoxGeometry(target.profile.width * 1.5, target.length * 1.15, target.height * 1.05),
       new THREE.MeshLambertMaterial({ color: 0x6a6f52, transparent: true, opacity: 0.82 }),
     )
-    net.position.set(0, 0, h * 0.55)
+    net.position.set(0, 0, target.height * 0.55)
     g.add(net)
   }
 

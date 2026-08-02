@@ -22,7 +22,7 @@ export interface Session {
 }
 
 /** Збирає повний виліт із самих даних рівня. */
-export function createSession(level: LevelSpec): Session {
+export function createSession(level: LevelSpec, sortieIndex = 0): Session {
   const terrain = new Terrain(level.terrain)
   const env: Environment = {
     ...defaultEnvironment(),
@@ -33,9 +33,16 @@ export function createSession(level: LevelSpec): Session {
   }
 
   const drone = new Drone(getDrone(level.droneId), getPayload(level.payloadId), env)
-  const { x, y, headingDeg } = level.launch
+  // виліт може стартувати з іншої точки — так цілі рознесені по різних кутах карти
+  const { x, y, headingDeg } = level.sorties[sortieIndex]?.launch ?? level.launch
   const skid = drone.spec.armLength * 0.5 + drone.payload.comOffset
   drone.reset(v3(x, y, terrain.height(x, y) + skid), degToRad(headingDeg))
 
-  return { level, terrain, drone, mission: new Mission(level, terrain, drone), env }
+  return {
+    level,
+    terrain,
+    drone,
+    mission: new Mission(level, terrain, drone, sortieIndex),
+    env,
+  }
 }

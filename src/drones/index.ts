@@ -105,7 +105,9 @@ export const DRONES: Record<string, DroneSpec> = {
     id: 'heavy-10',
     label: '10" важкий',
     mass: 2.4,
-    maxThrustN: 62,
+    // 70 Н дає TWR 1.46 з важким БК: усе ще «баржа», яка тоне на різкому
+    // нахилі, але не машина, що ледве відривається від землі
+    maxThrustN: 70,
     armLength: 0.23,
     inertia: [0.038, 0.038, 0.068],
     motorTau: 0.085,
@@ -129,6 +131,66 @@ export const DRONES: Record<string, DroneSpec> = {
     videoLatencyMs: 125,
     camera: { fov: 115, tiltDeg: 22 },
     vtx: { rangeM: 6000 },
+  },
+
+  'longrange-13': {
+    id: 'longrange-13',
+    label: '13" далекобійний',
+    mass: 2.9,
+    maxThrustN: 66,
+    armLength: 0.28,
+    inertia: [0.055, 0.055, 0.098],
+    motorTau: 0.11,
+    torqueRatio: 0.024,
+    dragXY: 0.06,
+    dragZ: 0.105,
+    cpOffset: 0.016,
+    propRadius: 0.165,
+    rates: {
+      roll: { rcRate: 0.45, superRate: 0.1, expo: 0.42 },
+      pitch: { rcRate: 0.45, superRate: 0.1, expo: 0.42 },
+      yaw: { rcRate: 0.45, superRate: 0.08, expo: 0.38 },
+    },
+    pid: {
+      roll: { p: 0.068, i: 0.105, d: 0.0055 },
+      pitch: { p: 0.071, i: 0.11, d: 0.0058 },
+      yaw: { p: 0.085, i: 0.125, d: 0.0 },
+    },
+    tuneQuality: 0.72,
+    battery: { cells: 6, capacityMah: 12000, internalResistance: 0.023 },
+    videoLatencyMs: 140,
+    camera: { fov: 110, tiltDeg: 20 },
+    vtx: { rangeM: 9000 },
+  },
+
+  'night-8': {
+    id: 'night-8',
+    label: '8" нічний',
+    mass: 1.75,
+    maxThrustN: 45,
+    armLength: 0.185,
+    inertia: [0.019, 0.019, 0.034],
+    motorTau: 0.062,
+    torqueRatio: 0.019,
+    dragXY: 0.044,
+    dragZ: 0.078,
+    cpOffset: 0.012,
+    propRadius: 0.102,
+    rates: {
+      roll: { rcRate: 0.58, superRate: 0.16, expo: 0.38 },
+      pitch: { rcRate: 0.58, superRate: 0.16, expo: 0.38 },
+      yaw: { rcRate: 0.55, superRate: 0.14, expo: 0.32 },
+    },
+    pid: {
+      roll: { p: 0.056, i: 0.092, d: 0.0027 },
+      pitch: { p: 0.059, i: 0.097, d: 0.0029 },
+      yaw: { p: 0.076, i: 0.112, d: 0.0 },
+    },
+    tuneQuality: 0.78,
+    battery: { cells: 6, capacityMah: 5600, internalResistance: 0.019 },
+    videoLatencyMs: 115,
+    camera: { fov: 118, tiltDeg: 22, monochrome: true },
+    vtx: { rangeM: 4200 },
   },
 }
 
@@ -167,8 +229,10 @@ export const PAYLOADS: Record<string, PayloadSpec> = {
   },
   bulky: {
     id: 'bulky',
-    label: 'об’ємне (1.6 кг)',
-    mass: 1.6,
+    // сенс цього БК — ПЛОЩА, а не вага: 1.35 кг лишає запас тяги
+    // навіть 7-дюймовому борту, але зносить його вітром сильніше за все інше
+    label: 'об’ємне (1.35 кг)',
+    mass: 1.35,
     comOffset: 0.115,
     dragArea: 0.055,
     armDistance: 120,

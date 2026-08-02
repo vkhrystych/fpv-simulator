@@ -163,7 +163,7 @@ describe('цілі', () => {
 
   it('статична ціль стоїть на землі й не рухається', () => {
     const t = new Target(
-      { id: 's', kind: 'target', label: '', position: [100, 200], hitRadius: 4, height: 2, length: 6 },
+      { id: 's', kind: 'target', vehicle: 'truck', label: '', position: [100, 200] },
       terrain,
     )
     const before = { ...t.position }
@@ -178,10 +178,8 @@ describe('цілі', () => {
       {
         id: 'm',
         kind: 'target',
+        vehicle: 'truck',
         label: '',
-        hitRadius: 4,
-        height: 3,
-        length: 8,
         route: { points: [[0, 0], [200, 0]], speed: 10, loop: false },
       },
       terrain,
@@ -196,10 +194,8 @@ describe('цілі', () => {
       {
         id: 'm',
         kind: 'target',
+        vehicle: 'truck',
         label: '',
-        hitRadius: 4,
-        height: 3,
-        length: 8,
         route: { points: [[-400, -300], [400, 350]], speed: 20, loop: false },
       },
       terrain,
@@ -215,10 +211,8 @@ describe('цілі', () => {
       {
         id: 'm',
         kind: 'target',
+        vehicle: 'truck',
         label: '',
-        hitRadius: 4,
-        height: 3,
-        length: 8,
         route: { points: [[0, 0], [100, 0]], speed: 10, loop: false },
       },
       terrain,
@@ -233,10 +227,8 @@ describe('цілі', () => {
       {
         id: 'm',
         kind: 'target',
+        vehicle: 'truck',
         label: '',
-        hitRadius: 4,
-        height: 3,
-        length: 8,
         route: { points: [[0, 0], [100, 0], [100, 100], [0, 100]], speed: 25, loop: true },
       },
       terrain,
@@ -251,10 +243,8 @@ describe('цілі', () => {
       {
         id: 'm',
         kind: 'target',
+        vehicle: 'truck',
         label: '',
-        hitRadius: 4,
-        height: 3,
-        length: 8,
         route: { points: [[0, 0], [50, 0], [100, 0]], speed: 10, loop: false, waitAtPoint: 5 },
       },
       terrain,
@@ -265,7 +255,7 @@ describe('цілі', () => {
   })
 
   it('замасковану ціль видно з меншої дистанції', () => {
-    const base = { id: 'x', kind: 'target' as const, label: '', position: [0, 0] as [number, number], hitRadius: 4, height: 3, length: 8 }
+    const base = { id: 'x', kind: 'target' as const, vehicle: 'truck' as const, label: '', position: [0, 0] as [number, number] }
     const open = new Target(base, terrain)
     const hidden = new Target({ ...base, concealed: true }, terrain)
     expect(hidden.visibilityRange).toBeLessThan(open.visibilityRange * 0.6)
@@ -345,16 +335,14 @@ describe('правила місії', () => {
     const near = {
       ...base,
       payloadId: 'medium',
-      primaryTargetId: 'close-target',
+      sorties: [{ targetId: 'close-target', note: 'ціль впритул' }],
       targets: [
         {
           id: 'close-target',
           kind: 'target' as const,
+          vehicle: 'truck' as const,
           label: 'ціль впритул',
           position: [base.launch.x, base.launch.y + 20] as [number, number],
-          hitRadius: 4,
-          height: 3,
-          length: 8,
         },
       ],
     }
@@ -374,16 +362,14 @@ describe('правила місії', () => {
     const far = {
       ...base,
       payloadId: 'medium',
-      primaryTargetId: 'far-target',
+      sorties: [{ targetId: 'far-target', note: 'ціль за 300 м' }],
       targets: [
         {
           id: 'far-target',
           kind: 'target' as const,
+          vehicle: 'truck' as const,
           label: 'ціль за 300 м',
           position: [base.launch.x, base.launch.y + 300] as [number, number],
-          hitRadius: 4,
-          height: 3,
-          length: 8,
         },
       ],
     }
@@ -556,9 +542,18 @@ describe('цілісність рівнів', () => {
       expect(gridCenter(s.terrain, cell), `квадрат ${cell}`).not.toBeNull()
     }
     for (const t of level.targets) {
-      expect(t.hitRadius).toBeGreaterThan(0)
       const p = t.route ? t.route.points[0] : t.position!
       expect(s.terrain.inBounds(p[0], p[1]), `ціль ${t.id} поза картою`).toBe(true)
+      if (t.route) {
+        for (const [x, y] of t.route.points) {
+          expect(s.terrain.inBounds(x, y), `маршрут ${t.id} виходить за карту`).toBe(true)
+        }
+      }
+    }
+    for (const sortie of level.sorties) {
+      const target = level.targets.find((t) => t.id === sortie.targetId)
+      expect(target, `${level.id}: виліт посилається на неіснуючу ціль ${sortie.targetId}`).toBeDefined()
+      expect(target!.kind, `${level.id}: ціль вильоту мусить бути 'target'`).toBe('target')
     }
   })
 
@@ -567,15 +562,16 @@ describe('цілісність рівнів', () => {
     LEVELS.forEach((l, i) => expect(l.index).toBe(i + 1))
   })
 
-  it('призначена ціль кожного рівня — у заявлених квадратах пошуку', () => {
+  it('ціль КОЖНОГО вильоту — у заявлених квадратах пошуку', () => {
     for (const level of LEVELS) {
-      const s = createSession(level)
-      const t = s.mission.primary
       const cells = new Set(level.searchCells)
-      // для рухомої цілі перевіряємо весь маршрут
-      const points = t.spec.route ? t.spec.route.points : [t.spec.position!]
-      const covered = points.some(([x, y]) => cells.has(gridLabel(s.terrain, x, y) ?? ''))
-      expect(covered, `${level.id}: ціль поза квадратами брифінгу`).toBe(true)
+      for (let i = 0; i < level.sorties.length; i++) {
+        const s = createSession(level, i)
+        const t = s.mission.primary
+        const points = t.spec.route ? t.spec.route.points : [t.spec.position!]
+        const covered = points.some(([x, y]) => cells.has(gridLabel(s.terrain, x, y) ?? ''))
+        expect(covered, `${level.id} виліт ${i + 1}: ціль поза квадратами брифінгу`).toBe(true)
+      }
     }
   })
 

@@ -19,22 +19,67 @@ export interface RouteSpec {
   waitAtPoint?: number
 }
 
+/**
+ * Каталог техніки. Розмір — це складність: мотоцикл із 80 м майже не видно
+ * і в нього важко влучити, танк видно здалеку, але він повільний і живучий.
+ * Рівні задають лише клас — габарити, радіус ураження й крейсерська швидкість
+ * беруться звідси, щоб 15 рівнів не перетворились на копіпасту чисел.
+ */
+export type VehicleClass =
+  | 'motorcycle'
+  | 'quad'
+  | 'car'
+  | 'pickup'
+  | 'van'
+  | 'truck'
+  | 'apc'
+  | 'tank'
+  | 'emplacement'
+
+export interface VehicleProfile {
+  label: string
+  /** довжина корпуса, м — головна ознака силуету */
+  length: number
+  width: number
+  height: number
+  /** радіус ураження, м */
+  hitRadius: number
+  /** типова крейсерська швидкість, м/с */
+  cruiseSpeed: number
+  /** гусенична — інший силует у кадрі */
+  tracked: boolean
+  /** башта */
+  turret: boolean
+}
+
+export const VEHICLES: Record<VehicleClass, VehicleProfile> = {
+  motorcycle: { label: 'мотоцикл', length: 2.1, width: 0.8, height: 1.3, hitRadius: 1.8, cruiseSpeed: 17, tracked: false, turret: false },
+  quad: { label: 'квадроцикл', length: 2.5, width: 1.3, height: 1.5, hitRadius: 2.2, cruiseSpeed: 13, tracked: false, turret: false },
+  car: { label: 'легковий автомобіль', length: 4.4, width: 1.8, height: 1.6, hitRadius: 3, cruiseSpeed: 16, tracked: false, turret: false },
+  pickup: { label: 'пікап', length: 5.3, width: 2, height: 1.9, hitRadius: 3.2, cruiseSpeed: 15, tracked: false, turret: false },
+  van: { label: 'мікроавтобус', length: 5.6, width: 2.1, height: 2.4, hitRadius: 3.4, cruiseSpeed: 14, tracked: false, turret: false },
+  truck: { label: 'вантажівка', length: 8, width: 2.5, height: 3.2, hitRadius: 4.5, cruiseSpeed: 9, tracked: false, turret: false },
+  apc: { label: 'БМП', length: 6.7, width: 3, height: 2.5, hitRadius: 4, cruiseSpeed: 8, tracked: true, turret: true },
+  tank: { label: 'танк', length: 9.5, width: 3.6, height: 2.6, hitRadius: 5, cruiseSpeed: 6, tracked: true, turret: true },
+  emplacement: { label: 'укриття', length: 7, width: 4, height: 2.2, hitRadius: 4.2, cruiseSpeed: 0, tracked: false, turret: false },
+}
+
 export interface TargetSpec {
   id: string
   kind: TargetKind
-  label: string
+  vehicle: VehicleClass
+  /** підпис у дебрифі; за замовчуванням — назва класу */
+  label?: string
   /** статична позиція (x, y); ігнорується, якщо є route */
   position?: [number, number]
   headingDeg?: number
-  /** радіус ураження, м */
-  hitRadius: number
-  /** висота корпуса, м — впливає на видимість і точку влучання */
-  height: number
-  /** довжина корпуса, м — з неї гравець і розрізняє силует */
-  length: number
   route?: RouteSpec
   /** чи стоїть під маскувальною сіткою: видно лише зблизька */
   concealed?: boolean
+  /** точкові правки габаритів, якщо рівню треба щось нетипове */
+  hitRadius?: number
+  height?: number
+  length?: number
 }
 
 /**
@@ -42,6 +87,11 @@ export interface TargetSpec {
  * жодного AI: поведінка мусить бути передбачуваною, щоб гравець міг її прочитати.
  */
 export class Target {
+  readonly profile: VehicleProfile
+  /** габарити з урахуванням правок рівня */
+  readonly length: number
+  readonly height: number
+  readonly hitRadius: number
   position: Vec3
   heading: number
   speed = 0
@@ -58,6 +108,10 @@ export class Target {
     readonly spec: TargetSpec,
     private terrain: Terrain,
   ) {
+    this.profile = VEHICLES[spec.vehicle]
+    this.length = spec.length ?? this.profile.length
+    this.height = spec.height ?? this.profile.height
+    this.hitRadius = spec.hitRadius ?? this.profile.hitRadius
     const p = spec.route ? spec.route.points[0] : (spec.position ?? [0, 0])
     this.position = v3(p[0], p[1], terrain.height(p[0], p[1]))
     this.heading = ((spec.headingDeg ?? 0) * Math.PI) / 180
@@ -126,17 +180,22 @@ export class Target {
     this.heading = this.legHeading(this.legIndex)
   }
 
+  get label(): string {
+    return this.spec.label ?? this.profile.label
+  }
+
   /** Точка, у яку зараховується влучання (середина корпуса). */
   get aimPoint(): Vec3 {
-    return v3(this.position.x, this.position.y, this.position.z + this.spec.height * 0.5)
+    return v3(this.position.x, this.position.y, this.position.z + this.height * 0.5)
   }
 
   /**
    * Дистанція, з якої ціль узагалі можна розгледіти.
-   * Замаскована — тільки зблизька; великий корпус — здалеку.
+   * Прив'язана до довжини корпуса: мотоцикл треба шукати впритул,
+   * танк видно вчетверо далі. Маскувальна сітка ріже це більш ніж удвічі.
    */
   get visibilityRange(): number {
-    const base = 120 + this.spec.length * 45
+    const base = 40 + this.length * 42
     return this.spec.concealed ? base * 0.45 : base
   }
 }
