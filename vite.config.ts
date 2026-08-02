@@ -8,6 +8,10 @@ import { defineConfig } from 'vite'
  * base мусить збігатися з назвою репозиторію: project-сторінки Pages
  * живуть за адресою /<repo>/, і з коренем «/» усі шляхи до асетів
  * ведуть у нікуди.
+ *
+ * .nojekyll лежить у public/, а не в docs/: emptyOutDir чистить docs/
+ * при кожній збірці, тому покладений туди руками файл жив рівно до
+ * наступного `npm run build`. З public/ Vite копіює його щоразу сам.
  */
 export default defineConfig({
   base: '/fpv-simulator/',
