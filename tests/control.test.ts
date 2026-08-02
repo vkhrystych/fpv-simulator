@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { stepKeyboardThrottle } from '../src/core/input'
+import { stepKeyboardThrottle, stepKeyboardAxis } from '../src/core/input'
 import { createSession } from '../src/game/session'
 import { getLevel } from '../src/level/levels'
 import { AngleController } from '../src/flight/angle'
 import { PHYSICS_DT } from '../src/flight/drone'
 import { qrotate, v3 } from '../src/flight/math'
 import { neutralInput } from '../src/flight/types'
+import { getDrone } from '../src/drones'
+import { applyRates, maxRate } from '../src/flight/rates'
 
 describe('клавіатурний газ', () => {
   it('W піднімає газ, S опускає', () => {
@@ -124,5 +126,52 @@ describe('політ уперед', () => {
 
   it('більший дозволений нахил дає більшу швидкість', () => {
     expect(flyForward(8, -1, 45).speed).toBeGreaterThan(flyForward(8, -1, 25).speed)
+  })
+})
+
+describe('розгін клавіатурного стіка', () => {
+  it('короткий тап дає мале відхилення, а не повний стік', () => {
+    let a = 0
+    for (let i = 0; i < 5; i++) a = stepKeyboardAxis(a, 1, 1 / 60) // ~83 мс
+    expect(a).toBeGreaterThan(0.1)
+    expect(a).toBeLessThan(0.4)
+  })
+
+  it('утримання виходить на повний стік', () => {
+    let a = 0
+    for (let i = 0; i < 90; i++) a = stepKeyboardAxis(a, 1, 1 / 60)
+    expect(a).toBeGreaterThan(0.95)
+  })
+
+  it('повернення в центр швидше за відхилення', () => {
+    let out = 0
+    for (let i = 0; i < 12; i++) out = stepKeyboardAxis(out, 1, 1 / 60)
+    let back = 1
+    for (let i = 0; i < 12; i++) back = stepKeyboardAxis(back, 0, 1 / 60)
+    expect(1 - back).toBeGreaterThan(out)
+  })
+
+  it('вісь не виходить за межі [-1, 1]', () => {
+    let a = 0
+    for (let i = 0; i < 300; i++) a = stepKeyboardAxis(a, -1, 1 / 30)
+    expect(a).toBeGreaterThanOrEqual(-1)
+    expect(a).toBeLessThan(-0.95)
+  })
+})
+
+describe('чутливість', () => {
+  it('множник ріже темп обертання пропорційно', () => {
+    const spec = getDrone('light-7')
+    const full = applyRates(1, spec.rates.roll)
+    const half = applyRates(0.5, spec.rates.roll)
+    expect(half).toBeLessThan(full * 0.6)
+  })
+
+  it('нові криві приблизно втричі спокійніші за гоночні', () => {
+    // гоночна крива, з якої починали
+    const racing = maxRate({ rcRate: 1.0, superRate: 0.62, expo: 0.25 })
+    const now = maxRate(getDrone('light-7').rates.roll)
+    expect(racing / now).toBeGreaterThan(2)
+    expect(racing / now).toBeLessThan(3.5)
   })
 })

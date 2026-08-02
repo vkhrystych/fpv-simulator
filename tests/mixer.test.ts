@@ -154,10 +154,24 @@ describe('rates', () => {
     }
   })
 
-  it('максимальна швидкість тренувального дрона у робочому діапазоні', () => {
-    const m = maxRate(curve)
-    expect(m).toBeGreaterThan(400)
-    expect(m).toBeLessThan(1200)
+  it('rates фристайлові, а не гоночні: 100–350 °/с на повному стіку', () => {
+    // гра про пошук і точний захід — на гоночних 500–800 °/с будь-який дотик
+    // стіка збиває лінію на ціль
+    for (const id of ['trainer-7', 'light-7', 'mid-8', 'heavy-10']) {
+      const spec = getDrone(id)
+      for (const axis of ['roll', 'pitch', 'yaw'] as const) {
+        const m = maxRate(spec.rates[axis])
+        expect(m, `${id}.${axis}`).toBeGreaterThan(100)
+        expect(m, `${id}.${axis}`).toBeLessThan(350)
+      }
+    }
+  })
+
+  it('рискання не різкіше за крен — інакше дрон «висмикує» на доведенні', () => {
+    for (const id of ['trainer-7', 'light-7', 'mid-8', 'heavy-10']) {
+      const spec = getDrone(id)
+      expect(maxRate(spec.rates.yaw), id).toBeLessThanOrEqual(maxRate(spec.rates.roll))
+    }
   })
 
   it('expo пом’якшує центр стіка', () => {

@@ -1,6 +1,11 @@
 import type { DroneSpec, PayloadSpec } from '../flight/types'
 
 /**
+ * RATES навмисно НЕ гоночні. Повний стік дає 110–310 °/с залежно від дрона —
+ * це фристайл-діапазон, а не 500–800 °/с, як у перегонах. Причина проста:
+ * ця гра про пошук і точний захід, а не про фліпи; на гоночних кривих
+ * будь-який дотик стіка збиває лінію на ціль.
+ *
  * Уся поведінка дрона живе тут, у даних. Новий дрон = новий об'єкт, нуль рядків коду.
  * Головні ручки «відчуття»: motorTau (в'ялість), tuneQuality (осциляції/пропвош),
  * maxThrustN vs mass (запас тяги), inertia (радіус розвороту).
@@ -20,9 +25,9 @@ export const DRONES: Record<string, DroneSpec> = {
     cpOffset: 0.008,
     propRadius: 0.089,
     rates: {
-      roll: { rcRate: 1.1, superRate: 0.68, expo: 0.2 },
-      pitch: { rcRate: 1.1, superRate: 0.68, expo: 0.2 },
-      yaw: { rcRate: 1.0, superRate: 0.55, expo: 0.15 },
+      roll: { rcRate: 1.0, superRate: 0.35, expo: 0.25 },
+      pitch: { rcRate: 1.0, superRate: 0.35, expo: 0.25 },
+      yaw: { rcRate: 0.85, superRate: 0.25, expo: 0.2 },
     },
     pid: {
       roll: { p: 0.052, i: 0.09, d: 0.0016 },
@@ -50,9 +55,9 @@ export const DRONES: Record<string, DroneSpec> = {
     cpOffset: 0.01,
     propRadius: 0.089,
     rates: {
-      roll: { rcRate: 1.0, superRate: 0.62, expo: 0.25 },
-      pitch: { rcRate: 1.0, superRate: 0.62, expo: 0.25 },
-      yaw: { rcRate: 0.9, superRate: 0.5, expo: 0.2 },
+      roll: { rcRate: 0.8, superRate: 0.25, expo: 0.3 },
+      pitch: { rcRate: 0.8, superRate: 0.25, expo: 0.3 },
+      yaw: { rcRate: 0.7, superRate: 0.2, expo: 0.25 },
     },
     pid: {
       roll: { p: 0.05, i: 0.085, d: 0.0017 },
@@ -80,9 +85,9 @@ export const DRONES: Record<string, DroneSpec> = {
     cpOffset: 0.012,
     propRadius: 0.102,
     rates: {
-      roll: { rcRate: 0.85, superRate: 0.5, expo: 0.3 },
-      pitch: { rcRate: 0.85, superRate: 0.5, expo: 0.3 },
-      yaw: { rcRate: 0.8, superRate: 0.45, expo: 0.25 },
+      roll: { rcRate: 0.62, superRate: 0.18, expo: 0.35 },
+      pitch: { rcRate: 0.62, superRate: 0.18, expo: 0.35 },
+      yaw: { rcRate: 0.6, superRate: 0.15, expo: 0.3 },
     },
     pid: {
       roll: { p: 0.055, i: 0.09, d: 0.0026 },
@@ -110,9 +115,9 @@ export const DRONES: Record<string, DroneSpec> = {
     cpOffset: 0.015,
     propRadius: 0.127,
     rates: {
-      roll: { rcRate: 0.7, superRate: 0.4, expo: 0.35 },
-      pitch: { rcRate: 0.7, superRate: 0.4, expo: 0.35 },
-      yaw: { rcRate: 0.65, superRate: 0.35, expo: 0.3 },
+      roll: { rcRate: 0.5, superRate: 0.12, expo: 0.4 },
+      pitch: { rcRate: 0.5, superRate: 0.12, expo: 0.4 },
+      yaw: { rcRate: 0.5, superRate: 0.1, expo: 0.35 },
     },
     pid: {
       roll: { p: 0.062, i: 0.1, d: 0.0042 },

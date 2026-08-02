@@ -150,6 +150,10 @@ function frame(now: number): void {
 }
 
 // ?level=2 — стрибок одразу на потрібний виліт (зручно для тестів і налагодження)
-const requested = Number(new URLSearchParams(location.search).get('level'))
+// ?sens=0.6 — множник чутливості стіків, щоб підібрати відчуття без перезбирання
+const params = new URLSearchParams(location.search)
+const sens = Number(params.get('sens'))
+if (Number.isFinite(sens) && sens > 0) input.sensitivity = sens
+const requested = Number(params.get('level'))
 loadLevel(Number.isFinite(requested) && requested > 0 ? requested - 1 : 0)
 requestAnimationFrame(frame)

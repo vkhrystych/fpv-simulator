@@ -8,6 +8,20 @@ import type { ControlInput } from '../flight/types'
  * Тому: W/S відхиляють газ, а без них він плавно повертається до газу зависання
  * (уже скомпенсованого нахилом). На геймпаді газ лишається справжнім абсолютним.
  */
+/**
+ * Крок клавіатурної осі крену/тангажу/рискання.
+ * Клавіша — це не стік: натиснув і вже маєш повне відхилення, тобто максимальну
+ * кутову швидкість від найлегшого дотику. Тому вводимо розгін стіка: натиснуте
+ * тримання плавно виходить на край, а відпускання швидко вертає в центр.
+ * Легкий тап = мале відхилення = точне доведення на ціль.
+ */
+export function stepKeyboardAxis(current: number, target: number, dt: number): number {
+  // до краю ~0.28 с, назад у центр ~0.11 с — повертатись стік мусить швидше,
+  // ніж відхилятись, інакше керування «пливе»
+  const tau = target === 0 ? 0.11 : 0.28
+  return clamp(current + (target - current) * smoothing(dt, tau), -1, 1)
+}
+
 export function stepKeyboardThrottle(
   current: number,
   up: number,
@@ -48,6 +62,11 @@ export class InputManager {
    * Головний цикл щокадру кладе сюди газ зависання з поправкою на нахил.
    */
   hoverBias = 0.5
+  /** Загальний множник чутливості стіків, спільний для клавіатури й геймпада. */
+  sensitivity = 1
+
+  /** згладжені положення клавіатурних осей */
+  private axes = { roll: 0, pitch: 0, yaw: 0 }
 
   constructor(private target: EventTarget = window) {
     this.target.addEventListener('keydown', this.onKeyDown as EventListener)
@@ -96,6 +115,9 @@ export class InputManager {
     this.armed = false
     this.restartRequested = false
     this.pressed.clear()
+    this.axes.roll = 0
+    this.axes.pitch = 0
+    this.axes.yaw = 0
   }
 
   /** Зчитує стан за кадр. dt потрібен газу з клавіатури. */
@@ -121,9 +143,12 @@ export class InputManager {
       const up = k('KeyW') + k('ShiftLeft') * 0.6
       const down = k('KeyS')
       this.throttle = stepKeyboardThrottle(this.throttle, up, down, this.hoverBias, dt, this.throttleRate)
-      yaw = k('KeyD') - k('KeyA')
-      roll = k('ArrowRight') - k('ArrowLeft')
-      pitch = k('ArrowUp') - k('ArrowDown')
+      this.axes.yaw = stepKeyboardAxis(this.axes.yaw, k('KeyD') - k('KeyA'), dt)
+      this.axes.roll = stepKeyboardAxis(this.axes.roll, k('ArrowRight') - k('ArrowLeft'), dt)
+      this.axes.pitch = stepKeyboardAxis(this.axes.pitch, k('ArrowUp') - k('ArrowDown'), dt)
+      yaw = this.axes.yaw
+      roll = this.axes.roll
+      pitch = this.axes.pitch
       // клавіатура вже дає фронт подією — латчі потрібні тільки геймпаду
       if (this.pressed.has('Space')) this.armed = !this.armed
       restartPressed = this.pressed.has('KeyR')
@@ -140,10 +165,11 @@ export class InputManager {
 
     if (!this.armed) this.throttle = pad ? this.throttle : 0
 
+    const k = clamp(this.sensitivity, 0.1, 2)
     return {
-      roll: clamp(roll, -1, 1),
-      pitch: clamp(pitch, -1, 1),
-      yaw: clamp(yaw, -1, 1),
+      roll: clamp(roll * k, -1, 1),
+      pitch: clamp(pitch * k, -1, 1),
+      yaw: clamp(yaw * k, -1, 1),
       throttle: this.armed ? this.throttle : 0,
       armed: this.armed,
     }
