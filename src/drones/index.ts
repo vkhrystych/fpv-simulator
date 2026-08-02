@@ -1,0 +1,183 @@
+import type { DroneSpec, PayloadSpec } from '../flight/types'
+
+/**
+ * Уся поведінка дрона живе тут, у даних. Новий дрон = новий об'єкт, нуль рядків коду.
+ * Головні ручки «відчуття»: motorTau (в'ялість), tuneQuality (осциляції/пропвош),
+ * maxThrustN vs mass (запас тяги), inertia (радіус розвороту).
+ */
+export const DRONES: Record<string, DroneSpec> = {
+  'trainer-7': {
+    id: 'trainer-7',
+    label: '7" тренувальний',
+    mass: 0.85,
+    maxThrustN: 34,
+    armLength: 0.15,
+    inertia: [0.0075, 0.0075, 0.014],
+    motorTau: 0.03,
+    torqueRatio: 0.017,
+    dragXY: 0.03,
+    dragZ: 0.055,
+    cpOffset: 0.008,
+    propRadius: 0.089,
+    rates: {
+      roll: { rcRate: 1.1, superRate: 0.68, expo: 0.2 },
+      pitch: { rcRate: 1.1, superRate: 0.68, expo: 0.2 },
+      yaw: { rcRate: 1.0, superRate: 0.55, expo: 0.15 },
+    },
+    pid: {
+      roll: { p: 0.052, i: 0.09, d: 0.0016 },
+      pitch: { p: 0.056, i: 0.095, d: 0.0018 },
+      yaw: { p: 0.075, i: 0.12, d: 0.0 },
+    },
+    tuneQuality: 1,
+    battery: { cells: 6, capacityMah: 3000, internalResistance: 0.016 },
+    videoLatencyMs: 90,
+    camera: { fov: 130, tiltDeg: 25 },
+    vtx: { rangeM: 2500 },
+  },
+
+  'light-7': {
+    id: 'light-7',
+    label: '7" легкий',
+    mass: 1.05,
+    maxThrustN: 36,
+    armLength: 0.155,
+    inertia: [0.009, 0.009, 0.017],
+    motorTau: 0.042,
+    torqueRatio: 0.017,
+    dragXY: 0.032,
+    dragZ: 0.06,
+    cpOffset: 0.01,
+    propRadius: 0.089,
+    rates: {
+      roll: { rcRate: 1.0, superRate: 0.62, expo: 0.25 },
+      pitch: { rcRate: 1.0, superRate: 0.62, expo: 0.25 },
+      yaw: { rcRate: 0.9, superRate: 0.5, expo: 0.2 },
+    },
+    pid: {
+      roll: { p: 0.05, i: 0.085, d: 0.0017 },
+      pitch: { p: 0.054, i: 0.09, d: 0.0019 },
+      yaw: { p: 0.07, i: 0.11, d: 0.0 },
+    },
+    tuneQuality: 0.88,
+    battery: { cells: 6, capacityMah: 4000, internalResistance: 0.017},
+    videoLatencyMs: 100,
+    camera: { fov: 125, tiltDeg: 28 },
+    vtx: { rangeM: 3500 },
+  },
+
+  'mid-8': {
+    id: 'mid-8',
+    label: '8" середній',
+    mass: 1.6,
+    maxThrustN: 44,
+    armLength: 0.185,
+    inertia: [0.018, 0.018, 0.032],
+    motorTau: 0.06,
+    torqueRatio: 0.019,
+    dragXY: 0.042,
+    dragZ: 0.075,
+    cpOffset: 0.012,
+    propRadius: 0.102,
+    rates: {
+      roll: { rcRate: 0.85, superRate: 0.5, expo: 0.3 },
+      pitch: { rcRate: 0.85, superRate: 0.5, expo: 0.3 },
+      yaw: { rcRate: 0.8, superRate: 0.45, expo: 0.25 },
+    },
+    pid: {
+      roll: { p: 0.055, i: 0.09, d: 0.0026 },
+      pitch: { p: 0.058, i: 0.095, d: 0.0028 },
+      yaw: { p: 0.075, i: 0.11, d: 0.0 },
+    },
+    tuneQuality: 0.8,
+    battery: { cells: 6, capacityMah: 5200, internalResistance: 0.019 },
+    videoLatencyMs: 110,
+    camera: { fov: 120, tiltDeg: 25 },
+    vtx: { rangeM: 4500 },
+  },
+
+  'heavy-10': {
+    id: 'heavy-10',
+    label: '10" важкий',
+    mass: 2.4,
+    maxThrustN: 62,
+    armLength: 0.23,
+    inertia: [0.038, 0.038, 0.068],
+    motorTau: 0.085,
+    torqueRatio: 0.022,
+    dragXY: 0.055,
+    dragZ: 0.095,
+    cpOffset: 0.015,
+    propRadius: 0.127,
+    rates: {
+      roll: { rcRate: 0.7, superRate: 0.4, expo: 0.35 },
+      pitch: { rcRate: 0.7, superRate: 0.4, expo: 0.35 },
+      yaw: { rcRate: 0.65, superRate: 0.35, expo: 0.3 },
+    },
+    pid: {
+      roll: { p: 0.062, i: 0.1, d: 0.0042 },
+      pitch: { p: 0.065, i: 0.105, d: 0.0045 },
+      yaw: { p: 0.08, i: 0.12, d: 0.0 },
+    },
+    tuneQuality: 0.75,
+    battery: { cells: 6, capacityMah: 8000, internalResistance: 0.021},
+    videoLatencyMs: 125,
+    camera: { fov: 115, tiltDeg: 22 },
+    vtx: { rangeM: 6000 },
+  },
+}
+
+export const PAYLOADS: Record<string, PayloadSpec> = {
+  none: {
+    id: 'none',
+    label: 'без навантаження',
+    mass: 0,
+    comOffset: 0,
+    dragArea: 0,
+    armDistance: 0,
+  },
+  light: {
+    id: 'light',
+    label: 'легке (0.5 кг)',
+    mass: 0.5,
+    comOffset: 0.07,
+    dragArea: 0.005,
+    armDistance: 60,
+  },
+  medium: {
+    id: 'medium',
+    label: 'середнє (1.2 кг)',
+    mass: 1.2,
+    comOffset: 0.095,
+    dragArea: 0.013,
+    armDistance: 100,
+  },
+  heavy: {
+    id: 'heavy',
+    label: 'важке (2.5 кг)',
+    mass: 2.5,
+    comOffset: 0.125,
+    dragArea: 0.022,
+    armDistance: 150,
+  },
+  bulky: {
+    id: 'bulky',
+    label: 'об’ємне (1.6 кг)',
+    mass: 1.6,
+    comOffset: 0.115,
+    dragArea: 0.055,
+    armDistance: 120,
+  },
+}
+
+export function getDrone(id: string): DroneSpec {
+  const d = DRONES[id]
+  if (!d) throw new Error(`unknown drone: ${id}`)
+  return d
+}
+
+export function getPayload(id: string): PayloadSpec {
+  const p = PAYLOADS[id]
+  if (!p) throw new Error(`unknown payload: ${id}`)
+  return p
+}

@@ -1,0 +1,148 @@
+import * as THREE from 'three'
+import { InputManager } from './core/input'
+import { FlightAudio } from './core/audio'
+import { createSession, type Session } from './game/session'
+import { LEVELS } from './level/levels'
+import { World } from './render/world'
+import { FpvCamera } from './render/camera'
+import { VideoFeed } from './render/video'
+import { VehicleRenderer } from './render/vehicles'
+import { Osd } from './ui/osd'
+import { Briefing } from './ui/briefing'
+import { Debrief } from './ui/debrief'
+import { AngleController } from './flight/angle'
+import type { MissionResult } from './game/mission'
+
+const app = document.getElementById('app')!
+const canvas = document.getElementById('view') as HTMLCanvasElement
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' })
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5))
+
+const input = new InputManager()
+const audio = new FlightAudio()
+const osd = new Osd(app)
+const briefing = new Briefing(app)
+const debrief = new Debrief(app)
+
+interface Runtime {
+  session: Session
+  world: World
+  camera: FpvCamera
+  video: VideoFeed
+  vehicles: VehicleRenderer
+  angle?: AngleController
+}
+
+let runtime: Runtime | null = null
+let levelIndex = 0
+let finished: MissionResult | null = null
+let lastTime = performance.now()
+
+function sizeOf(): [number, number] {
+  return [Math.max(1, innerWidth), Math.max(1, innerHeight)]
+}
+
+function loadLevel(index: number): void {
+  levelIndex = Math.min(index, LEVELS.length - 1)
+  const level = LEVELS[levelIndex]
+  briefing.show(level, createSession(level).terrain, () => startFlight(level))
+  osd.root.classList.add('hidden')
+}
+
+function startFlight(level: (typeof LEVELS)[number]): void {
+  runtime?.video.dispose()
+  runtime?.vehicles.dispose()
+
+  const session = createSession(level)
+  const [w, h] = sizeOf()
+  renderer.setSize(w, h, false)
+
+  const world = new World(session.terrain, level)
+  const camera = new FpvCamera(session.drone, w / h)
+  const video = new VideoFeed(renderer, w, h, !!session.drone.spec.camera.monochrome)
+  const vehicles = new VehicleRenderer(world.scene, session.mission.targets)
+
+  runtime = {
+    session,
+    world,
+    camera,
+    video,
+    vehicles,
+    angle: level.allowAngleMode ? new AngleController(session.drone.spec) : undefined,
+  }
+
+  // dev-хук: дозволяє з консолі телепортувати дрон і оглядати сцену
+  if (import.meta.env.DEV) {
+    ;(window as unknown as Record<string, unknown>).fpv = { session, world, camera, input }
+  }
+
+  finished = null
+  input.reset()
+  audio.start()
+  osd.root.classList.remove('hidden')
+  lastTime = performance.now()
+}
+
+function restart(): void {
+  startFlight(LEVELS[levelIndex])
+}
+
+function onResize(): void {
+  if (!runtime) return
+  const [w, h] = sizeOf()
+  renderer.setSize(w, h, false)
+  runtime.camera.setAspect(w / h)
+  runtime.video.setSize(w, h)
+}
+addEventListener('resize', onResize)
+
+function frame(now: number): void {
+  requestAnimationFrame(frame)
+  const dt = Math.min(0.05, (now - lastTime) / 1000)
+  lastTime = now
+  if (!runtime) return
+
+  const { session, world, camera, video, vehicles } = runtime
+  const { drone, mission } = session
+
+  if (input.restartRequested) {
+    restart()
+    return
+  }
+
+  if (!finished) {
+    let control = input.sample(dt)
+    // тренувальний рівень: ANGLE тримає горизонт, стіки задають кут нахилу
+    if (runtime.angle) {
+      const a = runtime.angle.compute(drone, control.pitch, control.roll)
+      control = { ...control, pitch: a.pitch, roll: a.roll }
+    }
+
+    drone.update(control, dt)
+    const result = mission.update(dt)
+    if (result.outcome !== 'flying') {
+      finished = result
+      audio.impact()
+      debrief.show(session.level, result, restart, result.outcome === 'success' && levelIndex + 1 < LEVELS.length
+        ? () => loadLevel(levelIndex + 1)
+        : undefined)
+      osd.root.classList.add('hidden')
+    }
+  }
+
+  vehicles.update(mission.targets)
+  world.updateGrass(drone.state.position.x, drone.state.position.y)
+  camera.update(dt)
+  video.render(world.scene, camera.camera, dt, finished ? 0 : mission.signal)
+
+  if (!finished) {
+    osd.update(drone, mission)
+    audio.update(drone.state.motorRpm, drone.telemetry.speed, mission.signal, input.armed)
+  }
+}
+
+// ?level=2 — стрибок одразу на потрібний виліт (зручно для тестів і налагодження)
+const requested = Number(new URLSearchParams(location.search).get('level'))
+loadLevel(Number.isFinite(requested) && requested > 0 ? requested - 1 : 0)
+requestAnimationFrame(frame)
