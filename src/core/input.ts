@@ -22,6 +22,39 @@ export function stepKeyboardAxis(current: number, target: number, dt: number): n
   return clamp(current + (target - current) * smoothing(dt, tau), -1, 1)
 }
 
+export interface ArmState {
+  armed: boolean
+  /** пілот заглушив мотори вручну — не піднімати їх, поки не відпустить газ */
+  cutByPilot: boolean
+}
+
+/**
+ * Стан «мотори живі». Окремо тиснути арм не треба: перший рух газу піднімає
+ * мотори сам — злітати треба одним рухом, а не пам'ятати про службову кнопку.
+ *
+ * Space лишається як аварійне глушіння в польоті. Щоб воно не скасовувалось
+ * тим самим газом, який ти ще тримаєш, після ручного глушіння автоарм чекає,
+ * поки газ повернеться в нуль.
+ */
+export function nextArmState(
+  state: ArmState,
+  input: { togglePressed: boolean; throttleInput: boolean; autoArm: boolean },
+): ArmState {
+  let { armed, cutByPilot } = state
+
+  if (input.togglePressed) {
+    armed = !armed
+    cutByPilot = !armed
+  }
+
+  // газ відпущено — «блокування» після ручного глушіння знімається
+  if (!input.throttleInput) cutByPilot = false
+
+  if (input.autoArm && !armed && input.throttleInput && !cutByPilot) armed = true
+
+  return { armed, cutByPilot }
+}
+
 export function stepKeyboardThrottle(
   current: number,
   up: number,
@@ -49,9 +82,15 @@ export class InputManager {
   /** індекс підключеного геймпада, або -1 */
   gamepadIndex = -1
   armed = false
+  /** Перший рух газу сам піднімає мотори. Space лишається аварійним глушінням. */
+  autoArm = true
+  private cutByPilot = false
   private armLatch = false
   private restartLatch = false
   restartRequested = false
+  private menuLatch = false
+  /** гравець попросився назад у меню кампанії */
+  menuRequested = false
 
   /** Мертва зона стіків геймпада. */
   deadzone = 0.06
@@ -113,7 +152,9 @@ export class InputManager {
   reset(): void {
     this.throttle = 0
     this.armed = false
+    this.cutByPilot = false
     this.restartRequested = false
+    this.menuRequested = false
     this.pressed.clear()
     this.axes.roll = 0
     this.axes.pitch = 0
@@ -127,7 +168,8 @@ export class InputManager {
     let roll = 0
     let pitch = 0
     let yaw = 0
-    let armPressed = false
+    let togglePressed = false
+    let throttleInput = false
     let restartPressed = false
 
     if (pad) {
@@ -136,8 +178,16 @@ export class InputManager {
       yaw = this.axis(pad.axes[0] ?? 0)
       roll = this.axis(pad.axes[2] ?? 0)
       pitch = -this.axis(pad.axes[3] ?? 0)
-      armPressed = !!pad.buttons[0]?.pressed
+      throttleInput = this.throttle > 0.06
+      const armDown = !!pad.buttons[0]?.pressed
+      togglePressed = armDown && !this.armLatch
+      this.armLatch = armDown
       restartPressed = !!pad.buttons[9]?.pressed
+      this.restartRequested = restartPressed && !this.restartLatch
+      this.restartLatch = restartPressed
+      const menuDown = !!pad.buttons[8]?.pressed
+      this.menuRequested = menuDown && !this.menuLatch
+      this.menuLatch = menuDown
     } else {
       const k = (code: string) => (this.keys.has(code) ? 1 : 0)
       const up = k('KeyW') + k('ShiftLeft') * 0.6
@@ -149,19 +199,20 @@ export class InputManager {
       yaw = this.axes.yaw
       roll = this.axes.roll
       pitch = this.axes.pitch
+      throttleInput = up > 0
       // клавіатура вже дає фронт подією — латчі потрібні тільки геймпаду
-      if (this.pressed.has('Space')) this.armed = !this.armed
-      restartPressed = this.pressed.has('KeyR')
-      this.restartRequested = restartPressed
+      togglePressed = this.pressed.has('Space')
+      this.restartRequested = this.pressed.has('KeyR')
+      this.menuRequested = this.pressed.has('Escape')
       this.pressed.clear()
     }
 
-    if (pad) {
-      if (armPressed && !this.armLatch) this.armed = !this.armed
-      this.armLatch = armPressed
-      this.restartRequested = restartPressed && !this.restartLatch
-      this.restartLatch = restartPressed
-    }
+    const arm = nextArmState(
+      { armed: this.armed, cutByPilot: this.cutByPilot },
+      { togglePressed, throttleInput, autoArm: this.autoArm },
+    )
+    this.armed = arm.armed
+    this.cutByPilot = arm.cutByPilot
 
     if (!this.armed) this.throttle = pad ? this.throttle : 0
 

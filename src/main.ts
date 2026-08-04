@@ -72,7 +72,13 @@ function loadSortie(index: number, sortie = 0): void {
   const level = LEVELS[levelIndex]
   sortieIndex = Math.min(Math.max(sortie, 0), level.sorties.length - 1)
   progress.setCurrent(level.id, sortieIndex)
-  briefing.show(level, createSession(level, sortieIndex).terrain, () => startFlight(level), sortieIndex)
+  briefing.show(
+    level,
+    createSession(level, sortieIndex).terrain,
+    () => startFlight(level),
+    sortieIndex,
+    showCampaign,
+  )
   osd.root.classList.add('hidden')
 }
 
@@ -134,6 +140,12 @@ function frame(now: number): void {
   const { session, world, camera, video, vehicles } = runtime
   const { drone, mission } = session
 
+  if (input.menuRequested) {
+    runtime = null
+    showCampaign()
+    return
+  }
+
   if (input.restartRequested) {
     restartLevel()
     return
@@ -173,7 +185,7 @@ function frame(now: number): void {
           ? () => loadSortie(levelIndex + 1, 0)
           : showCampaign
 
-      debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total })
+      debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total }, showCampaign)
       osd.root.classList.add('hidden')
     }
   }

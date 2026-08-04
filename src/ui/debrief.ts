@@ -31,6 +31,7 @@ export class Debrief {
     onRetry: () => void,
     onNext?: () => void,
     sortie = { index: 0, total: 1 },
+    onMenu?: () => void,
   ): void {
     const ok = result.outcome === 'success'
     const more = ok && sortie.index + 1 < sortie.total
@@ -86,6 +87,16 @@ export class Debrief {
       }
       row.appendChild(next)
     }
+    if (onMenu) {
+      const menu = document.createElement('button')
+      menu.textContent = 'CAMPAIGN'
+      menu.onclick = () => {
+        this.hide()
+        onMenu()
+      }
+      row.appendChild(menu)
+    }
+
     this.root.querySelector('.debrief-card')!.appendChild(row)
     this.root.classList.remove('hidden')
   }

@@ -24,7 +24,13 @@ export class Briefing {
     parent.appendChild(this.root)
   }
 
-  show(level: LevelSpec, terrain: Terrain, onStart: () => void, sortieIndex = 0): void {
+  show(
+    level: LevelSpec,
+    terrain: Terrain,
+    onStart: () => void,
+    sortieIndex = 0,
+    onBack?: () => void,
+  ): void {
     this.onStart = onStart
     this.root.innerHTML = ''
     this.root.classList.remove('hidden')
@@ -62,13 +68,29 @@ export class Briefing {
       this.hide()
       this.onStart?.()
     }
-    right.appendChild(start)
+
+    const row = document.createElement('div')
+    row.className = 'buttons'
+    row.appendChild(start)
+
+    if (onBack) {
+      const back = document.createElement('button')
+      back.textContent = 'CAMPAIGN'
+      back.onclick = () => {
+        this.hide()
+        onBack()
+      }
+      row.appendChild(back)
+    }
+    right.appendChild(row)
 
     const help = document.createElement('p')
     help.className = 'help'
     help.textContent =
-      'Gamepad: left stick — throttle/yaw, right stick — pitch/roll, A — arm. ' +
-      'Keyboard: W/S — throttle, A/D — yaw, arrows — pitch/roll, Space — arm, R — restart. ' +
+      'Gamepad: left stick — throttle/yaw, right stick — pitch/roll. ' +
+      'Keyboard: W/S — throttle, A/D — yaw, arrows — pitch/roll, R — restart. ' +
+      'Motors spin up the moment you touch the throttle — no arming step. ' +
+      'Space cuts the motors in flight if you need it. ' +
       'A keyboard has no analogue axis, so a released throttle drifts back to hover — ' +
       'on a gamepad the throttle is true and absolute.'
     right.appendChild(help)

@@ -219,3 +219,51 @@ describe('UI англійською', () => {
     }
   })
 })
+
+describe('перепроходження пройдених рівнів', () => {
+  const completeAll = (p: Progress, upTo: number) => {
+    for (let i = 0; i < upTo; i++) p.completeLevel(LEVELS[i].id)
+  }
+
+  it('пройдений рівень лишається доступним для повторного заходу', () => {
+    const p = new Progress(memoryStore())
+    completeAll(p, 5)
+    expect(p.isUnlocked(L1)).toBe(true)
+    expect(p.isCompleted(L1)).toBe(true)
+  })
+
+  it('перепроходження старого рівня НЕ відкидає курсор «продовжити» назад', () => {
+    const p = new Progress(memoryStore())
+    completeAll(p, 12)
+    const resumeBefore = p.resumeLevelId
+    expect(resumeBefore).toBe(LEVELS[12].id)
+
+    // граємо перший рівень заново
+    p.setCurrent(L1, 0)
+    p.completeSortie(L1, 0)
+
+    expect(p.resumeLevelId, 'курсор мав лишитись на першому непройденому').toBe(LEVELS[12].id)
+    expect(p.completedCount).toBe(12)
+  })
+
+  it('провал під час перепроходження не забирає вже здобутий прогрес', () => {
+    const p = new Progress(memoryStore())
+    completeAll(p, 6)
+    p.setCurrent(L2, 0)
+    p.failLevel(L2)
+    expect(p.completedCount).toBe(6)
+    expect(p.isCompleted(L2)).toBe(true)
+    expect(p.isUnlocked(LEVELS[6].id)).toBe(true)
+  })
+
+  it('коли непройдених не лишилось, курсор іде на щойно зіграний рівень', () => {
+    // правило одне: «перший непройдений, а якщо таких немає — той, що щойно грав».
+    // Після 100% кампанії це і є найкорисніша поведінка: продовжити звідти, де ти був.
+    const p = new Progress(memoryStore())
+    completeAll(p, LEVELS.length)
+    expect(p.resumeLevelId).toBe(LEVELS[LEVELS.length - 1].id)
+    p.completeLevel(L1)
+    expect(p.resumeLevelId).toBe(L1)
+    expect(p.completedCount).toBe(LEVELS.length)
+  })
+})

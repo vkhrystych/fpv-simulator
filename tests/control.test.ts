@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { stepKeyboardThrottle, stepKeyboardAxis } from '../src/core/input'
+import { stepKeyboardThrottle, stepKeyboardAxis, nextArmState } from '../src/core/input'
 import { createSession } from '../src/game/session'
 import { getLevel } from '../src/level/levels'
 import { AngleController } from '../src/flight/angle'
@@ -173,5 +173,52 @@ describe('чутливість', () => {
     const now = maxRate(getDrone('light-7').rates.roll)
     expect(racing / now).toBeGreaterThan(2)
     expect(racing / now).toBeLessThan(3.5)
+  })
+})
+
+describe('арм: злітаємо одним рухом газу', () => {
+  const off = { armed: false, cutByPilot: false }
+
+  it('перший рух газу сам піднімає мотори', () => {
+    const r = nextArmState(off, { togglePressed: false, throttleInput: true, autoArm: true })
+    expect(r.armed).toBe(true)
+  })
+
+  it('без газу мотори лишаються заглушеними', () => {
+    const r = nextArmState(off, { togglePressed: false, throttleInput: false, autoArm: true })
+    expect(r.armed).toBe(false)
+  })
+
+  it('Space глушить мотори в польоті', () => {
+    const flying = { armed: true, cutByPilot: false }
+    const r = nextArmState(flying, { togglePressed: true, throttleInput: true, autoArm: true })
+    expect(r.armed).toBe(false)
+    expect(r.cutByPilot).toBe(true)
+  })
+
+  it('після ручного глушіння газ, який ще тримають, НЕ піднімає мотори назад', () => {
+    let s = nextArmState({ armed: true, cutByPilot: false }, { togglePressed: true, throttleInput: true, autoArm: true })
+    for (let i = 0; i < 30; i++) {
+      s = nextArmState(s, { togglePressed: false, throttleInput: true, autoArm: true })
+      expect(s.armed).toBe(false)
+    }
+  })
+
+  it('після відпускання газу автоарм знову працює', () => {
+    let s = nextArmState({ armed: true, cutByPilot: false }, { togglePressed: true, throttleInput: true, autoArm: true })
+    s = nextArmState(s, { togglePressed: false, throttleInput: false, autoArm: true })
+    expect(s.cutByPilot).toBe(false)
+    s = nextArmState(s, { togglePressed: false, throttleInput: true, autoArm: true })
+    expect(s.armed).toBe(true)
+  })
+
+  it('Space піднімає мотори і без газу — ручний арм нікуди не подівся', () => {
+    const r = nextArmState(off, { togglePressed: true, throttleInput: false, autoArm: true })
+    expect(r.armed).toBe(true)
+  })
+
+  it('з вимкненим автоармом газ мотори не піднімає', () => {
+    const r = nextArmState(off, { togglePressed: false, throttleInput: true, autoArm: false })
+    expect(r.armed).toBe(false)
   })
 })

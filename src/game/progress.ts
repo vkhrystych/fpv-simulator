@@ -147,12 +147,17 @@ export class Progress {
     }
   }
 
-  /** Рівень пройдено повністю: відкриваємо наступний. */
+  /**
+   * Рівень пройдено повністю: відкриваємо наступний.
+   *
+   * Курсор «продовжити» ставимо на перший НЕпройдений рівень, а не просто
+   * на наступний за списком. Інакше перепроходження першого рівня заради
+   * розваги відкидало б гравця з дванадцятого назад на другий.
+   */
   completeLevel(levelId: string): void {
     if (!this.data.completed.includes(levelId)) this.data.completed.push(levelId)
-    const index = LEVELS.findIndex((l) => l.id === levelId)
-    const next = LEVELS[index + 1]
-    this.data.levelId = next ? next.id : levelId
+    const firstUnfinished = LEVELS.find((l) => !this.isCompleted(l.id))
+    this.data.levelId = firstUnfinished ? firstUnfinished.id : levelId
     this.data.sortieIndex = 0
     this.write()
   }
