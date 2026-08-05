@@ -1,9 +1,11 @@
 import type { MissionResult } from '../game/mission'
 import type { FailReason, LevelSpec } from '../level/types'
+import { PROP_LABELS } from '../level/props'
 
 /** Суха таблиця. Без рахунку, комбо і героїчної музики. */
 const REASONS: Record<FailReason, { title: string; note: string }> = {
   CRASHED: { title: 'AIRCRAFT LOST', note: 'Collision with terrain.' },
+  HIT_OBSTACLE: { title: 'AIRCRAFT LOST', note: 'You flew into an obstacle.' },
   BATTERY_EMPTY: { title: 'BATTERY EMPTY', note: 'The pack ran out before you reached the target.' },
   SIGNAL_LOST: { title: 'SIGNAL LOST', note: 'Too far out, or too low behind the terrain.' },
   TIMEOUT: { title: 'TIME EXPIRED', note: 'The target was not destroyed inside the window.' },
@@ -45,7 +47,10 @@ export class Debrief {
       : {
           ...REASONS[result.reason ?? 'CRASHED'],
           note:
-            REASONS[result.reason ?? 'CRASHED'].note +
+            (result.reason === 'HIT_OBSTACLE' && result.hitObstacle
+              ? `You flew into ${PROP_LABELS[result.hitObstacle]}. Watch your altitude — ` +
+                'treelines, farm buildings and power lines are solid.'
+              : REASONS[result.reason ?? 'CRASHED'].note) +
             (sortie.total > 1 ? ' The level restarts from the first sortie.' : ''),
         }
 

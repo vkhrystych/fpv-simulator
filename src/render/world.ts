@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import type { Terrain } from '../level/terrain'
 import type { LevelSpec, WeatherSpec } from '../level/types'
 import { makeRng } from '../flight/math'
+import type { PropField, PropKind } from '../level/props'
 
 /**
  * Уся геометрія світу — процедурна: жодних асетів, усе з того самого seed,
@@ -11,7 +12,6 @@ import { makeRng } from '../flight/math'
 const TERRAIN_SEGMENTS = 320
 const GRASS_RADIUS = 75
 const GRASS_COUNT = 5200
-const TREE_COUNT = 900
 
 interface Palette {
   sky: THREE.Color
@@ -82,6 +82,7 @@ export class World {
   constructor(
     private terrain: Terrain,
     private level: LevelSpec,
+    private props: PropField,
   ) {
     this.palette = PALETTES[level.weather.timeOfDay]
     this.grassRng = makeRng(level.terrain.seed ^ 0x51ed)
@@ -92,7 +93,7 @@ export class World {
     this.buildLights()
     this.buildSky()
     this.buildTerrain()
-    this.buildTrees()
+    this.buildProps()
     this.buildRoads()
     this.buildGrass()
   }
@@ -175,50 +176,92 @@ export class World {
     this.scene.add(mesh)
   }
 
-  /** Лісосмуги: детерміновані по seed, згущені смугами — щоб було де ховатись цілі. */
-  private buildTrees(): void {
-    const rng = makeRng(this.terrain.config.seed ^ 0x7ee5)
-    const size = this.terrain.config.size
+  /**
+   * Наповнення карти малюється з PropField — того самого, об який відбуваються
+   * зіткнення. Два незалежні генератори тут неприпустимі: гравець розбився б
+   * об дерево, якого не бачить.
+   */
+  private buildProps(): void {
+    this.instanced('tree', this.treeGeometries(), [0x4a3f31, this.palette.tree.getHex()])
+    this.instanced('bush', [bushGeometry()], [this.palette.tree.clone().offsetHSL(0.02, -0.05, 0.06).getHex()])
+    this.instanced('haystack', [haystackGeometry()], [0xa8934f])
+    this.instanced('pole', poleGeometries(), [0x6b6257, 0x6b6257])
+    this.buildBuildings()
+  }
+
+  private treeGeometries(): THREE.BufferGeometry[] {
     const trunk = new THREE.CylinderGeometry(0.28, 0.42, 5, 5)
     trunk.rotateX(Math.PI / 2)
     trunk.translate(0, 0, 2.5)
     const crown = new THREE.ConeGeometry(2.6, 9, 6)
     crown.rotateX(Math.PI / 2)
     crown.translate(0, 0, 8.5)
+    return [trunk, crown]
+  }
 
-    const trunkMesh = new THREE.InstancedMesh(
-      trunk,
-      new THREE.MeshLambertMaterial({ color: 0x4a3f31 }),
-      TREE_COUNT,
-    )
-    const crownMesh = new THREE.InstancedMesh(
-      crown,
-      new THREE.MeshLambertMaterial({ color: this.palette.tree }),
-      TREE_COUNT,
-    )
+  /** Одна InstancedMesh на вид і частину — так тримаємось бюджету draw calls. */
+  private instanced(kind: PropKind, geometries: THREE.BufferGeometry[], colors: number[]): void {
+    const items = this.props.ofKind(kind)
+    if (!items.length) return
 
     const m = new THREE.Matrix4()
     const q = new THREE.Quaternion()
-    const s = new THREE.Vector3()
-    const p = new THREE.Vector3()
+    const up = new THREE.Vector3(0, 0, 1)
+    const scale = new THREE.Vector3()
+    const pos = new THREE.Vector3()
 
-    for (let i = 0; i < TREE_COUNT; i++) {
-      // смуги вздовж осі Y з випадковим зсувом — імітація лісосмуг між полями
-      const belt = Math.floor(rng() * 7)
-      const bx = -size + ((belt + 0.5) / 7) * size * 2 + (rng() - 0.5) * 90
-      const by = (rng() * 2 - 1) * size
-      const h = this.terrain.height(bx, by)
-      p.set(bx, by, h)
-      const scale = 0.7 + rng() * 0.8
-      s.set(scale, scale, scale * (0.8 + rng() * 0.5))
-      q.setFromAxisAngle(new THREE.Vector3(0, 0, 1), rng() * Math.PI * 2)
-      m.compose(p, q, s)
-      trunkMesh.setMatrixAt(i, m)
-      crownMesh.setMatrixAt(i, m)
+    geometries.forEach((geo, gi) => {
+      const mesh = new THREE.InstancedMesh(
+        geo,
+        new THREE.MeshLambertMaterial({ color: colors[gi] ?? colors[0] }),
+        items.length,
+      )
+      items.forEach((p, i) => {
+        pos.set(p.x, p.y, p.groundZ)
+        const sz = kind === 'tree' ? (p.height / 13) : p.scale
+        scale.set(p.scale, p.scale, sz)
+        q.setFromAxisAngle(up, p.rotation)
+        m.compose(pos, q, scale)
+        mesh.setMatrixAt(i, m)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+      this.scene.add(mesh)
+    })
+  }
+
+  /** Будівлі мають індивідуальні габарити, тому окремі меші, а не інстанси. */
+  private buildBuildings(): void {
+    // будівлі — головні орієнтири з повітря, тому їм трохи власного світіння:
+    // затінений бік інакше зливається в чорну пляму й нічого не підказує
+    const wallMat = new THREE.MeshLambertMaterial({
+      color: 0xb3a996,
+      emissive: new THREE.Color(0xb3a996).multiplyScalar(0.22),
+    })
+    const roofMat = new THREE.MeshLambertMaterial({
+      color: 0x7d6553,
+      emissive: new THREE.Color(0x7d6553).multiplyScalar(0.22),
+    })
+    for (const p of this.props.ofKind('building')) {
+      const w = (p.halfW ?? 4) * 2
+      const l = (p.halfL ?? 7) * 2
+      const g = new THREE.Group()
+
+      const walls = new THREE.Mesh(new THREE.BoxGeometry(w, l, p.height), wallMat)
+      walls.position.z = p.height / 2
+      g.add(walls)
+
+      // Двосхилий дах: із повітря будівля читається саме дахом.
+      // Тригранна призма, вісь якої вже збігається з довжиною будівлі (локальна Y),
+      // тому її треба лише довернути навколо власної осі, щоб ребро дивилось угору.
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.62, w * 0.62, l, 3, 1), roofMat)
+      roof.rotation.y = -Math.PI / 2
+      roof.position.z = p.height + w * 0.18
+      g.add(roof)
+
+      g.position.set(p.x, p.y, p.groundZ)
+      g.rotation.z = p.rotation
+      this.scene.add(g)
     }
-    trunkMesh.instanceMatrix.needsUpdate = true
-    crownMesh.instanceMatrix.needsUpdate = true
-    this.scene.add(trunkMesh, crownMesh)
   }
 
   /** Ґрунтівки будуємо з маршрутів цілей — дорога і є підказкою, де шукати. */
@@ -319,4 +362,30 @@ export class World {
     }
     this.grass.instanceMatrix.needsUpdate = true
   }
+}
+
+/** Кущ — приплюснута низькополігональна півсфера. */
+function bushGeometry(): THREE.BufferGeometry {
+  const g = new THREE.SphereGeometry(1.5, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2)
+  g.rotateX(Math.PI / 2)
+  g.scale(1, 1, 0.7)
+  return g
+}
+
+/** Стіг — циліндр із конічною шапкою, злитий в одну геометрію. */
+function haystackGeometry(): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(2.4, 2.6, 3.2, 8)
+  g.rotateX(Math.PI / 2)
+  g.translate(0, 0, 1.6)
+  return g
+}
+
+/** Стовп ЛЕП: щогла й траверса — саме траверса робить силует упізнаваним. */
+function poleGeometries(): THREE.BufferGeometry[] {
+  const mast = new THREE.CylinderGeometry(0.22, 0.32, 11, 5)
+  mast.rotateX(Math.PI / 2)
+  mast.translate(0, 0, 5.5)
+  const arm = new THREE.BoxGeometry(4.2, 0.22, 0.22)
+  arm.translate(0, 0, 9.6)
+  return [mast, arm]
 }

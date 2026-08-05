@@ -25,6 +25,8 @@ export interface ProgressData {
   /** де гравець зупинився */
   levelId: string | null
   sortieIndex: number
+  /** чи бачив пояснення керування */
+  seenTutorial: boolean
 }
 
 export const emptyProgress = (): ProgressData => ({
@@ -32,6 +34,7 @@ export const emptyProgress = (): ProgressData => ({
   completed: [],
   levelId: null,
   sortieIndex: 0,
+  seenTutorial: false,
 })
 
 /** Сховище в пам'яті — для тестів і як запасний варіант у браузері. */
@@ -78,7 +81,7 @@ export class Progress {
       const levelId = typeof parsed.levelId === 'string' && known.has(parsed.levelId) ? parsed.levelId : null
       const sortieIndex = Number.isInteger(parsed.sortieIndex) ? Math.max(0, parsed.sortieIndex as number) : 0
 
-      return { version: PROGRESS_VERSION, completed, levelId, sortieIndex }
+      return { version: PROGRESS_VERSION, completed, levelId, sortieIndex, seenTutorial: parsed.seenTutorial === true }
     } catch {
       return emptyProgress()
     }
@@ -178,5 +181,16 @@ export class Progress {
 
   get completedCount(): number {
     return this.data.completed.length
+  }
+
+  /** Пояснення керування показуємо один раз — далі лише за запитом. */
+  get seenTutorial(): boolean {
+    return this.data.seenTutorial
+  }
+
+  markTutorialSeen(): void {
+    if (this.data.seenTutorial) return
+    this.data.seenTutorial = true
+    this.write()
   }
 }

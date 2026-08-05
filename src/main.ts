@@ -11,6 +11,7 @@ import { Osd } from './ui/osd'
 import { Briefing } from './ui/briefing'
 import { Debrief } from './ui/debrief'
 import { LevelSelect } from './ui/levelselect'
+import { Tutorial } from './ui/tutorial'
 import { Progress } from './game/progress'
 import { AngleController } from './flight/angle'
 import { qrotate, v3 } from './flight/math'
@@ -28,6 +29,7 @@ const osd = new Osd(app)
 const briefing = new Briefing(app)
 const debrief = new Debrief(app)
 const levelSelect = new LevelSelect(app)
+const tutorial = new Tutorial(app)
 const progress = new Progress()
 
 interface Runtime {
@@ -54,6 +56,7 @@ function sizeOf(): [number, number] {
 function showCampaign(): void {
   briefing.hide()
   debrief.hide()
+  tutorial.hide()
   osd.root.classList.add('hidden')
   levelSelect.show(
     progress,
@@ -62,7 +65,20 @@ function showCampaign(): void {
       progress.reset()
       showCampaign()
     },
+    () => showTutorial(false),
   )
+}
+
+/** Пояснення керування: автоматично при першому запуску, далі — за кнопкою. */
+function showTutorial(firstRun: boolean): void {
+  levelSelect.hide()
+  briefing.hide()
+  debrief.hide()
+  osd.root.classList.add('hidden')
+  tutorial.show(() => {
+    progress.markTutorialSeen()
+    showCampaign()
+  }, firstRun)
 }
 
 /** Показує брифінг конкретного вильоту рівня. */
@@ -90,7 +106,7 @@ function startFlight(level: (typeof LEVELS)[number]): void {
   const [w, h] = sizeOf()
   renderer.setSize(w, h, false)
 
-  const world = new World(session.terrain, level)
+  const world = new World(session.terrain, level, session.props)
   const camera = new FpvCamera(session.drone, w / h)
   const video = new VideoFeed(renderer, w, h, !!session.drone.spec.camera.monochrome)
   const vehicles = new VehicleRenderer(world.scene, session.mission.targets)
@@ -208,5 +224,6 @@ const sens = Number(params.get('sens'))
 if (Number.isFinite(sens) && sens > 0) input.sensitivity = sens
 const requested = Number(params.get('level'))
 if (Number.isFinite(requested) && requested > 0) loadSortie(requested - 1, 0)
+else if (!progress.seenTutorial) showTutorial(true)
 else showCampaign()
 requestAnimationFrame(frame)

@@ -20,7 +20,12 @@ export class LevelSelect {
     parent.appendChild(this.root)
   }
 
-  show(progress: Progress, onPick: (level: LevelSpec) => void, onReset: () => void): void {
+  show(
+    progress: Progress,
+    onPick: (level: LevelSpec) => void,
+    onReset: () => void,
+    onControls?: () => void,
+  ): void {
     this.root.innerHTML = ''
     this.root.classList.remove('hidden')
 
@@ -77,6 +82,13 @@ export class LevelSelect {
     resume.textContent = done === 0 ? 'START CAMPAIGN' : `CONTINUE — ${resumeLevel.title}`
     resume.onclick = () => onPick(resumeLevel)
     row.appendChild(resume)
+
+    if (onControls) {
+      const help = document.createElement('button')
+      help.textContent = 'CONTROLS'
+      help.onclick = onControls
+      row.appendChild(help)
+    }
 
     if (done > 0) {
       const reset = document.createElement('button')

@@ -2,6 +2,7 @@ import type { Drone } from '../flight/drone'
 import { clamp, qrotate, v3, vdot, vlen, vnorm, vsub, type Vec3 } from '../flight/math'
 import { degToRad } from '../flight/rates'
 import { Terrain, gridLabel } from '../level/terrain'
+import { PROP_LABELS, type PropField, type PropKind } from '../level/props'
 import type { FailReason, LevelSpec, MissionOutcome, SortieSpec } from '../level/types'
 import { Target } from './targets'
 
@@ -11,6 +12,8 @@ export const ID_HOLD_SECONDS = 1.5
 export const ID_RANGE = 80
 /** Скільки секунд без сигналу до провалу. */
 export const SIGNAL_LOSS_LIMIT = 8
+/** Довший «крок» за кадр — це стрибок позиції, а не політ: зіткнення не рахуємо. */
+export const MAX_COLLISION_STEP = 60
 
 export interface MissionStats {
   timeS: number
@@ -24,6 +27,8 @@ export interface MissionResult {
   outcome: MissionOutcome
   reason?: FailReason
   hitTargetId?: string
+  /** у що саме врізались, якщо reason = HIT_OBSTACLE */
+  hitObstacle?: PropKind
   stats: MissionStats
 }
 
@@ -36,6 +41,7 @@ export class Mission {
   outcome: MissionOutcome = 'flying'
   reason?: FailReason
   hitTargetId?: string
+  hitObstacle?: PropKind
 
   /** якість відеосигналу 0..1 */
   signal = 1
@@ -53,6 +59,8 @@ export class Mission {
     private drone: Drone,
     /** індекс вильоту в межах рівня */
     readonly sortieIndex = 0,
+    /** дерева, будівлі та інші перешкоди; без них зіткнень просто немає */
+    private props?: PropField,
   ) {
     this.targets = level.targets.map((t) => new Target(t, terrain))
     // цілі попередніх вильотів уже уражені — прибираємо їх зі світу,
@@ -114,7 +122,18 @@ export class Mission {
   }
 
   get result(): MissionResult {
-    return { outcome: this.outcome, reason: this.reason, hitTargetId: this.hitTargetId, stats: this.stats }
+    return {
+      outcome: this.outcome,
+      reason: this.reason,
+      hitTargetId: this.hitTargetId,
+      hitObstacle: this.hitObstacle,
+      stats: this.stats,
+    }
+  }
+
+  /** Текст для дебрифу: гравець мусить знати, у що саме він влетів. */
+  get obstacleLabel(): string {
+    return this.hitObstacle ? PROP_LABELS[this.hitObstacle] : 'an obstacle'
   }
 
   /** Напрям, куди дивиться камера (з урахуванням нахилу об’єктива вгору). */
@@ -143,6 +162,19 @@ export class Mission {
 
     const impact = this.checkImpact(prev, pos)
     if (impact) return impact
+
+    // Перешкоди перевіряємо ПІСЛЯ цілей: якщо ціль стоїть під деревом,
+    // влучання має зарахуватись, а не перетворитись на зіткнення.
+    //
+    // Відрізки довші за MAX_STEP — це не політ, а стрибок позиції (відновлення
+    // вкладки, завантаження, телепорт у тестах). Дрон фізично не може подолати
+    // стільки за кадр, тож «зіткнення» на такому відрізку було б вигаданим.
+    const stepped = vlen(vsub(pos, prev))
+    const obstacle = stepped <= MAX_COLLISION_STEP ? this.props?.hitTest(prev, pos) : null
+    if (obstacle) {
+      this.hitObstacle = obstacle.kind
+      return this.fail('HIT_OBSTACLE')
+    }
 
     return this.checkFailures(dt)
   }

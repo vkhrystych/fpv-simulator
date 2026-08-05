@@ -53,6 +53,7 @@ export interface LevelSpec {
 
 export type FailReason =
   | 'CRASHED'
+  | 'HIT_OBSTACLE'
   | 'BATTERY_EMPTY'
   | 'SIGNAL_LOST'
   | 'TIMEOUT'

@@ -28,7 +28,7 @@ export class Autopilot {
   }
 
   step(target: Target): ControlInput {
-    const { drone, terrain } = this.session
+    const { drone, terrain, props } = this.session
     const s = drone.state
     const alt = s.position.z - terrain.height(s.position.x, s.position.y)
     const horizSpeed = Math.hypot(s.velocity.x, s.velocity.y)
@@ -85,8 +85,19 @@ export class Autopilot {
     const aheadX = s.position.x + s.velocity.x * 1.5
     const aheadY = s.position.y + s.velocity.y * 1.5
     const clearance = ground > 25 ? 9 : 1.2
-    const floorZ =
+    let floorZ =
       Math.max(terrain.height(aheadX, aheadY), terrain.height(s.position.x, s.position.y)) + clearance
+
+    // Перешкоди попереду: лісосмуги, ферми, ЛЕП. Живий пілот обходить їх
+    // згори, і автопілот мусить робити так само — інакше кожна смуга дерев
+    // на маршруті означає втрату борта.
+    if (ground > 20) {
+      for (const p of props.near(aheadX, aheadY, 30)) {
+        const reach = (p.radius ?? Math.hypot(p.halfW ?? 0, p.halfL ?? 0)) + 14
+        if (Math.hypot(p.x - aheadX, p.y - aheadY) > reach) continue
+        floorZ = Math.max(floorZ, p.groundZ + p.height + 8)
+      }
+    }
     const receding = ground > this.prevGround + 0.02
     this.prevGround = ground
     const tooLow = s.position.z < floorZ || (receding && alt < 16 && ground > 20)
