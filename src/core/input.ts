@@ -55,18 +55,18 @@ export function nextArmState(
   return { armed, cutByPilot }
 }
 
-export function stepKeyboardThrottle(
-  current: number,
-  up: number,
-  down: number,
-  hoverBias: number,
-  dt: number,
-  rate: number,
-): number {
+/**
+ * Клавіатурний газ — трещітка, як на реальній апаратурі: W/S рухають,
+ * відпустив — лишається РІВНО там, де поставив. Повернення до газу
+ * зависання прибрано свідомо (07.08.2026): пілот хоче виставити
+ * крейсерський газ і летіти, а асист тягнув його назад до 90%+
+ * на важких бортах. Висоту в нахилі тепер тримає пілот — газом.
+ */
+export function stepKeyboardThrottle(current: number, up: number, down: number, dt: number, rate: number): number {
   if (up > 0 || down > 0) {
     return clamp(current + (up - down) * rate * dt, 0, 1)
   }
-  return clamp(current + (clamp(hoverBias, 0, 1) - current) * smoothing(dt, 0.35), 0, 1)
+  return current
 }
 
 /**
@@ -96,11 +96,6 @@ export class InputManager {
   deadzone = 0.06
   /** Швидкість набору газу з клавіатури, частка за секунду. */
   throttleRate = 0.85
-  /**
-   * Газ, до якого повертається клавіатурний стік у нейтралі.
-   * Головний цикл щокадру кладе сюди газ зависання з поправкою на нахил.
-   */
-  hoverBias = 0.5
   /** Загальний множник чутливості стіків, спільний для клавіатури й геймпада. */
   sensitivity = 1
 
@@ -192,7 +187,7 @@ export class InputManager {
       const k = (code: string) => (this.keys.has(code) ? 1 : 0)
       const up = k('KeyW') + k('ShiftLeft') * 0.6
       const down = k('KeyS')
-      this.throttle = stepKeyboardThrottle(this.throttle, up, down, this.hoverBias, dt, this.throttleRate)
+      this.throttle = stepKeyboardThrottle(this.throttle, up, down, dt, this.throttleRate)
       this.axes.yaw = stepKeyboardAxis(this.axes.yaw, k('KeyD') - k('KeyA'), dt)
       this.axes.roll = stepKeyboardAxis(this.axes.roll, k('ArrowRight') - k('ArrowLeft'), dt)
       this.axes.pitch = stepKeyboardAxis(this.axes.pitch, k('ArrowUp') - k('ArrowDown'), dt)

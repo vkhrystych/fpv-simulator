@@ -15,7 +15,6 @@ import { Debrief } from './ui/debrief'
 import { LevelSelect } from './ui/levelselect'
 import { Tutorial } from './ui/tutorial'
 import { Progress } from './game/progress'
-import { qrotate, v3 } from './flight/math'
 import type { MissionResult } from './game/mission'
 
 const app = document.getElementById('app')!
@@ -235,13 +234,8 @@ function frame(now: number): void {
   }
 
   if (!finished) {
-    // Газ, до якого повертається клавіатура в нейтралі: зависання з поправкою
-    // на нахил (при крені вертикальна складова тяги падає як cos). На землі
-    // асисту немає — зліт з трави пілот робить сам.
-    const up = qrotate(drone.state.orientation, v3(0, 0, 1)).z
-    input.hoverBias = drone.state.landed ? 0 : drone.hoverThrottleNow / Math.max(up, 0.5)
-
-    // ACRO на всіх рівнях: стік — кутова швидкість, відпустив — нахил лишається
+    // ACRO на всіх рівнях: стік — кутова швидкість, відпустив — нахил лишається.
+    // Газ на клавіатурі — трещітка: куди поставив, там і стоїть.
     const control = input.sample(dt)
 
     drone.update(control, dt)
