@@ -80,7 +80,7 @@ export const LEVELS: LevelSpec[] = [
     brief:
       'Training range. Lift off from the grass, gain altitude and destroy the practice ' +
       'emplacement in square D4. No payload — the drone is light and forgiving. ' +
-      'ANGLE mode: the drone holds the horizon for you, the sticks set the bank angle.',
+      'ACRO, like every flight: the sticks set rotation rate, release and the bank stays.',
     droneId: 'trainer-7',
     payloadId: 'none',
     terrain: { seed: 20260801, ...MAP, amplitude: 9, featureSize: 900 },
@@ -88,7 +88,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -60, y: -420, headingDeg: 0 },
     timeLimitS: 360,
     searchCells: ['D4'],
-    allowAngleMode: true,
+    training: true,
     objectives: [
       'Lift off from the grass and climb to 30 m',
       'Find the emplacement in square D4',
@@ -114,8 +114,8 @@ export const LEVELS: LevelSpec[] = [
     title: 'Dirt Road',
     brief:
       'Sweep the ground between C3 and F6. A hostile truck is moving along the dirt ' +
-      'road — tarpaulin bed, long, no trailer. Civilian traffic uses the same roads: ' +
-      'shorter body, lighter paint, often towing. Light payload aboard: heavier than ' +
+      'road — long body, dark military paint. Civilian traffic uses the same roads: ' +
+      'shorter body, lighter paint. Light payload aboard: heavier than ' +
       'the trainer and pushed harder by wind. Arms 60 m from the launch point.',
     droneId: 'light-7',
     payloadId: 'light',
@@ -124,7 +124,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -720, y: -640, headingDeg: 40 },
     timeLimitS: 420,
     searchCells: ['C3', 'D3', 'D4', 'E4', 'E5', 'F5', 'F6'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search squares C3–F6',
       'Tell the hostile truck from the civilian one',
@@ -195,13 +195,15 @@ export const LEVELS: LevelSpec[] = [
   },
 
   {
+    // id лишився «quad» з часів, коли ціллю був квадроцикл: перейменування
+    // рівня обнулило б збережений прогрес і замкнуло послідовне відкриття
     id: 'l3-quad-track',
     index: 3,
-    title: 'Quad Bike',
+    title: 'Ammo Runner',
     brief:
-      'A hostile quad bike is hauling ammunition along a field track in the north-east. ' +
-      'It is half the size of a truck and twice as fast — from 100 m you simply will not ' +
-      'see it. You will have to descend and track it along the road. ' +
+      'A hostile motorcycle is hauling ammunition along a field track in the north-east. ' +
+      'It is a fraction of the size of a truck and twice as fast — from 100 m you simply ' +
+      'will not see it. You will have to descend and track it along the road. ' +
       'A civilian pickup uses the same track.',
     droneId: 'light-7',
     payloadId: 'light',
@@ -210,20 +212,20 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -640, y: 240, headingDeg: 70 },
     timeLimitS: 420,
     searchCells: ['F2', 'G2', 'F3', 'G3', 'H3'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search squares F2–H3',
-      'Find the quad bike — 2.5 m body',
+      'Find the motorcycle — 2.1 m body',
       'Track it and lead the target',
-      'Destroy the quad bike',
+      'Destroy the motorcycle',
     ],
-    sorties: [{ targetId: 'quad-supply', note: 'Quad bike on the field track, F2–H3' }],
+    sorties: [{ targetId: 'moto-supply', note: 'Motorcycle on the field track, F2–H3' }],
     targets: [
       {
-        id: 'quad-supply',
+        id: 'moto-supply',
         kind: 'target',
-        vehicle: 'quad',
-        label: 'ammunition quad bike',
+        vehicle: 'motorcycle',
+        label: 'ammunition motorcycle',
         route: {
           points: [
             [320, 620],
@@ -272,7 +274,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: 520, y: -180, headingDeg: 230 },
     timeLimitS: 420,
     searchCells: ['B6', 'C6', 'B7', 'C7', 'D7'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search squares B6–D7',
       'Find the motorcycle — the smallest silhouette in the game',
@@ -331,7 +333,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -780, y: 60, headingDeg: 60 },
     timeLimitS: 420,
     searchCells: ['D2', 'E2', 'E3', 'D6', 'E6', 'E7'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Sortie 1: truck in squares D2–E3',
       'Sortie 2: pickup in squares D6–E7',
@@ -410,7 +412,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: 640, y: 620, headingDeg: 210 },
     timeLimitS: 450,
     searchCells: ['C4', 'D4', 'C5', 'D5'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search squares C4–D5',
       'Tell the APC from the mock-up',
@@ -469,7 +471,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -700, y: -720, headingDeg: 45 },
     timeLimitS: 480,
     searchCells: ['D4', 'E4', 'D5', 'E5'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search the centre of the map',
       'Feel the inertia of a heavy airframe',
@@ -507,9 +509,9 @@ export const LEVELS: LevelSpec[] = [
     index: 8,
     title: 'Three Sorties',
     brief:
-      'Three targets in three corners of the map, three sorties back to back: quad bike, ' +
+      'Three targets in three corners of the map, three sorties back to back: motorcycle, ' +
       'truck, APC. Every sortie is a fresh airframe from its own launch point. ' +
-      'One failure and it all starts again from the quad bike.',
+      'One failure and it all starts again from the motorcycle.',
     droneId: 'mid-8',
     payloadId: 'medium',
     terrain: { seed: 730992, ...MAP },
@@ -517,15 +519,15 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -760, y: -760, headingDeg: 45 },
     timeLimitS: 400,
     searchCells: ['B2', 'C2', 'F3', 'G3', 'E6', 'F6'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
-      'Sortie 1: quad bike, north-west',
+      'Sortie 1: motorcycle, north-west',
       'Sortie 2: truck, north-east',
       'Sortie 3: APC, south-east',
       'Three sorties back to back, no failures',
     ],
     sorties: [
-      { targetId: 'quad-nw', note: 'Sortie 1 — quad bike, north-west (B2–C2)' },
+      { targetId: 'moto-nw', note: 'Sortie 1 — motorcycle, north-west (B2–C2)' },
       {
         targetId: 'truck-ne',
         note: 'Sortie 2 — truck, north-east (F3–G3)',
@@ -539,9 +541,9 @@ export const LEVELS: LevelSpec[] = [
     ],
     targets: [
       {
-        id: 'quad-nw',
+        id: 'moto-nw',
         kind: 'target',
-        vehicle: 'quad',
+        vehicle: 'motorcycle',
         route: {
           points: [
             [-620, 620],
@@ -618,7 +620,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: 700, y: -560, headingDeg: 300 },
     timeLimitS: 450,
     searchCells: ['C3', 'D3', 'C4', 'D4'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Search squares C3–D4',
       'Account for drift — run in with a correction',
@@ -674,7 +676,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -720, y: 700, headingDeg: 140 },
     timeLimitS: 480,
     searchCells: ['E4', 'F4', 'E5', 'F5'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Inspect all three objects',
       'Find the one with a turret and tracks',
@@ -725,7 +727,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -1500, y: -1400, headingDeg: 45 },
     timeLimitS: 600,
     searchCells: ['F3', 'G3', 'F4', 'G4'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Cover 2.5 km to the target area',
       'Watch the signal bar — it falls off with distance',
@@ -781,7 +783,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: 120, y: 780, headingDeg: 180 },
     timeLimitS: 480,
     searchCells: ['D6', 'E6', 'D7', 'E7'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Push south into squares D6–E7',
       'Fly low — otherwise you will see nothing',
@@ -837,7 +839,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -740, y: 720, headingDeg: 135 },
     timeLimitS: 480,
     searchCells: ['E3', 'F3', 'D6', 'E6'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Sortie 1: tank in squares E3–F3',
       'Sortie 2: APC in squares D6–E6',
@@ -907,7 +909,7 @@ export const LEVELS: LevelSpec[] = [
     title: 'Fog',
     brief:
       'Dawn, 700 m of visibility, fog eating the horizon. Two sorties: a truck and a ' +
-      'quad bike. In fog the only references are roads and treelines — the compass and ' +
+      'motorcycle. In fog the only references are roads and treelines — the compass and ' +
       'what you remember from the briefing matter more than your eyes.',
     droneId: 'mid-8',
     payloadId: 'medium',
@@ -916,17 +918,17 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -700, y: -200, headingDeg: 70 },
     timeLimitS: 450,
     searchCells: ['E3', 'F3', 'F5', 'G5'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Sortie 1: truck in squares E3–F3',
-      'Sortie 2: quad bike in squares F5–G5',
+      'Sortie 2: motorcycle in squares F5–G5',
       'Keep your altitude — in fog the terrain shows up late',
     ],
     sorties: [
       { targetId: 'truck-fog', note: 'Sortie 1 — truck, E3–F3' },
       {
-        targetId: 'quad-fog',
-        note: 'Sortie 2 — quad bike, F5–G5',
+        targetId: 'moto-fog',
+        note: 'Sortie 2 — motorcycle, F5–G5',
         launch: { x: -180, y: -760, headingDeg: 20 },
       },
     ],
@@ -948,9 +950,9 @@ export const LEVELS: LevelSpec[] = [
         },
       },
       {
-        id: 'quad-fog',
+        id: 'moto-fog',
         kind: 'target',
-        vehicle: 'quad',
+        vehicle: 'motorcycle',
         route: {
           points: [
             [300, -120],
@@ -995,7 +997,7 @@ export const LEVELS: LevelSpec[] = [
     launch: { x: -780, y: -780, headingDeg: 40 },
     timeLimitS: 420,
     searchCells: ['C3', 'D3', 'E5', 'F5', 'F7', 'G7'],
-    allowAngleMode: false,
+    training: false,
     objectives: [
       'Sortie 1: APC, squares C3–D3',
       'Sortie 2: tank, squares E5–F5',

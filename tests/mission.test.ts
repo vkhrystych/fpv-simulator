@@ -576,7 +576,7 @@ describe('цілісність рівнів', () => {
   })
 
   it('на кожному бойовому рівні є що переплутати', () => {
-    const combat = LEVELS.filter((l) => !l.allowAngleMode)
+    const combat = LEVELS.filter((l) => !l.training)
     expect(combat.length).toBeGreaterThan(0)
     for (const l of combat) {
       const distractors = l.targets.filter((t) => t.kind !== 'target')

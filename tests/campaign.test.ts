@@ -15,15 +15,15 @@ const make = (vehicle: VehicleClass) =>
 
 describe('каталог техніки', () => {
   it('розміри впорядковані від мотоцикла до танка', () => {
-    const order: VehicleClass[] = ['motorcycle', 'quad', 'car', 'pickup', 'truck', 'tank']
+    const order: VehicleClass[] = ['motorcycle', 'car', 'pickup', 'truck', 'tank']
     for (let i = 1; i < order.length; i++) {
       expect(VEHICLES[order[i]].length, order[i]).toBeGreaterThan(VEHICLES[order[i - 1]].length)
     }
   })
 
   it('радіус ураження росте разом із корпусом', () => {
-    expect(VEHICLES.motorcycle.hitRadius).toBeLessThan(VEHICLES.quad.hitRadius)
-    expect(VEHICLES.quad.hitRadius).toBeLessThan(VEHICLES.truck.hitRadius)
+    expect(VEHICLES.motorcycle.hitRadius).toBeLessThan(VEHICLES.car.hitRadius)
+    expect(VEHICLES.car.hitRadius).toBeLessThan(VEHICLES.truck.hitRadius)
     expect(VEHICLES.truck.hitRadius).toBeLessThan(VEHICLES.tank.hitRadius)
   })
 
@@ -181,7 +181,7 @@ describe('чесність рівнів', () => {
         const stationary = !t.route
         // статична ціль допускається лише замаскованою або в тренуванні
         if (stationary) {
-          const ok = t.concealed || level.allowAngleMode || t.vehicle === 'tank' || t.vehicle === 'apc'
+          const ok = t.concealed || level.training || t.vehicle === 'tank' || t.vehicle === 'apc'
           expect(ok, `${level.id}/${t.id}: статична ціль без причини`).toBe(true)
         }
       }
@@ -198,7 +198,7 @@ describe('чесність рівнів', () => {
     const used = new Set(
       LEVELS.flatMap((l) => l.sorties.map((s) => l.targets.find((t) => t.id === s.targetId)!.vehicle)),
     )
-    for (const v of ['motorcycle', 'quad', 'truck', 'apc', 'tank'] as VehicleClass[]) {
+    for (const v of ['motorcycle', 'truck', 'apc', 'tank'] as VehicleClass[]) {
       expect(used.has(v), `клас ${v} не використано в жодному вильоті`).toBe(true)
     }
   })
@@ -250,7 +250,7 @@ describe('чесність рівнів', () => {
   })
 
   it('на бойових рівнях завжди є кого переплутати з ціллю', () => {
-    for (const l of LEVELS.filter((x) => !x.allowAngleMode)) {
+    for (const l of LEVELS.filter((x) => !x.training)) {
       const distractors = l.targets.filter((t) => t.kind !== 'target')
       expect(distractors.length, l.id).toBeGreaterThan(0)
     }
@@ -273,9 +273,9 @@ describe('чесність рівнів', () => {
     expect(times.has('dawn')).toBe(true)
   })
 
-  it('тільки перший рівень дозволяє ANGLE', () => {
-    expect(getLevel('l1-first-flight').allowAngleMode).toBe(true)
-    for (const l of LEVELS.slice(1)) expect(l.allowAngleMode, l.id).toBe(false)
+  it('тренувальний лише перший рівень', () => {
+    expect(getLevel('l1-first-flight').training).toBe(true)
+    for (const l of LEVELS.slice(1)) expect(l.training, l.id).toBe(false)
   })
 
   it('незаармлений дрон не злітає на жодному рівні', () => {

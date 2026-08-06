@@ -1,136 +1,195 @@
 import * as THREE from 'three'
-import type { Target } from '../game/targets'
+import type { Target, TargetKind, VehicleClass } from '../game/targets'
+import { buildBakedMesh } from './baked'
+import { box, flatten, wedge } from './shapes'
+import { BAKED_VEHICLES, type BakedModel } from './vehicle-data'
 
 /**
- * Силуети техніки. Розрізняти їх — це і є геймплей, тому форми зроблені
- * навмисно близькими: гусенична машина від колісної відрізняється низьким
- * корпусом, гусеницями та баштою, а ворожа вантажівка від цивільної —
- * лише довжиною кузова, кольором тенту та наявністю причепа.
- * З 200 м усе це — темні плями; різниця з'являється метрів із сорока.
+ * Моделі техніки.
+ *
+ * Шість класів (мотоцикл, пікап, фургон, вантажівка, БМП, танк) — запечені
+ * низькополі GLB з військового набору (`assets/mil/`, конвертер —
+ * `scripts/bake-vehicles.mjs`). Модель приходить одним мешем із вершинними
+ * кольорами: хоч в оригіналі 11 матеріалів, у кадрі це один draw call.
+ *
+ * Легковик і укриття лишаються процедурними: у наборі немає ні цивільного
+ * седана, ні насипу.
+ *
+ * Розрізнення «свій/чужий» — кольором: у цивільних машин оливкові частини
+ * корпусу перетягнуті в світлий бежевий, у макетів — у мертвий сіро-зелений.
+ * Силует лишається силуетом: габарити береться з каталогу `VEHICLES`,
+ * а пропорції боковини — з оригінальної моделі, щоб колеса не ставали овалами.
  */
 
 const TARGET_PAINT = 0x4b5240
-const TARGET_CAB = 0x434a3a
 const CIVILIAN_PAINT = 0xb9b3a4
-const CIVILIAN_CAB = 0x8d99a6
 const DECOY_PAINT = 0x555b48
 const RUBBER = 0x1c1c1c
+const GLASS = 0x2e3a3c
+const WOOD = 0x8a7f68
+const DARK = 0x2a2a24
+const EARTH = 0x6a6350
 
-function paintFor(t: Target): { body: number; cab: number } {
-  switch (t.spec.kind) {
+/** Нейтральне навісне однакове для всіх — воно не несе ознаки «свій/чужий». */
+const SHARED = {
+  rubber: new THREE.MeshLambertMaterial({ color: RUBBER, flatShading: true }),
+  glass: new THREE.MeshLambertMaterial({ color: GLASS, flatShading: true }),
+  wood: new THREE.MeshLambertMaterial({ color: WOOD, flatShading: true }),
+  dark: new THREE.MeshLambertMaterial({ color: DARK, flatShading: true }),
+  earth: new THREE.MeshLambertMaterial({ color: EARTH, flatShading: true }),
+}
+
+interface Dims {
+  length: number
+  width: number
+  height: number
+}
+
+interface Kit {
+  body: THREE.Material
+  rubber: THREE.Material
+  glass: THREE.Material
+  wood: THREE.Material
+  dark: THREE.Material
+  earth: THREE.Material
+}
+
+function paintFor(kind: TargetKind): number {
+  switch (kind) {
     case 'target':
-      return { body: TARGET_PAINT, cab: TARGET_CAB }
+      return TARGET_PAINT
     case 'civilian':
-      return { body: CIVILIAN_PAINT, cab: CIVILIAN_CAB }
+      return CIVILIAN_PAINT
     case 'decoy':
-      return { body: DECOY_PAINT, cab: DECOY_PAINT }
+      return DECOY_PAINT
   }
 }
 
-/** Гусенична машина: низький корпус, гусениці по бортах, башта. */
-function buildTracked(g: THREE.Group, t: Target, bodyMat: THREE.Material): void {
-  const { width } = t.profile
-  const len = t.length
-  const h = t.height
-
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(width * 0.82, len * 0.95, h * 0.45), bodyMat)
-  hull.position.set(0, 0, h * 0.42)
-  g.add(hull)
-
-  // скошена лобова деталь — головна ознака бронетехніки згори
-  const glacis = new THREE.Mesh(new THREE.BoxGeometry(width * 0.8, len * 0.3, h * 0.22), bodyMat)
-  glacis.position.set(0, len * 0.34, h * 0.28)
-  glacis.rotation.x = -0.5
-  g.add(glacis)
-
-  const trackMat = new THREE.MeshLambertMaterial({ color: RUBBER })
-  for (const side of [-1, 1]) {
-    const track = new THREE.Mesh(new THREE.BoxGeometry(width * 0.2, len * 0.98, h * 0.3), trackMat)
-    track.position.set((side * width) / 2.3, 0, h * 0.16)
-    g.add(track)
-  }
-
-  if (t.profile.turret) {
-    const turret = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.3, width * 0.34, h * 0.32, 8), bodyMat)
-    turret.rotation.x = Math.PI / 2
-    turret.position.set(0, -len * 0.06, h * 0.78)
-    g.add(turret)
-
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, len * 0.55, 6), bodyMat)
-    barrel.rotation.x = Math.PI / 2
-    barrel.position.set(0, len * 0.24, h * 0.82)
-    g.add(barrel)
+function kitFor(kind: TargetKind): Kit {
+  return {
+    body: new THREE.MeshLambertMaterial({ color: paintFor(kind), flatShading: true }),
+    ...SHARED,
   }
 }
 
-/** Колісна машина: кабіна + кузов, за потреби причіп. */
-function buildWheeled(g: THREE.Group, t: Target, bodyMat: THREE.Material, cabMat: THREE.Material): void {
-  const { width } = t.profile
-  const len = t.length
-  const h = t.height
-  const twoBox = len > 4.8
+// ---------------------------------------------------------------------------
+// Запечені GLB-моделі
+// ---------------------------------------------------------------------------
 
-  if (twoBox) {
-    const cabLen = len * 0.3
-    const bodyLen = len * 0.7
-    const body = new THREE.Mesh(new THREE.BoxGeometry(width, bodyLen, h * 0.7), bodyMat)
-    body.position.set(0, -cabLen / 2, h * 0.55)
-    g.add(body)
+/**
+ * Оливкові кольори корпусу — те, що перефарбовується за належністю.
+ * Гуми, скла, вантажу і хрестів санітарки це не торкається: зелений канал
+ * мусить домінувати і мати помітну насиченість.
+ */
+function isBodyPaint(r: number, g: number, b: number): boolean {
+  return g > r && g > b && g - Math.min(r, g, b) > 12
+}
 
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, cabLen, h * 0.55), cabMat)
-    cab.position.set(0, bodyLen / 2, h * 0.4)
-    g.add(cab)
-
-    // причіп — ознака цивільної машини
-    if (t.spec.kind === 'civilian' && len > 5.4) {
-      const trailer = new THREE.Mesh(new THREE.BoxGeometry(width * 0.95, bodyLen * 0.8, h * 0.55), bodyMat)
-      trailer.position.set(0, -bodyLen - cabLen * 0.6, h * 0.45)
-      g.add(trailer)
+function tintedPalette(model: BakedModel, kind: TargetKind): THREE.Color[] {
+  return model.palette.map((hex) => {
+    let r = (hex >> 16) & 255
+    let g = (hex >> 8) & 255
+    let b = hex & 255
+    if (kind !== 'target' && isBodyPaint(r, g, b)) {
+      const to = kind === 'civilian' ? CIVILIAN_PAINT : DECOY_PAINT
+      const t = kind === 'civilian' ? 0.72 : 0.5
+      r += (((to >> 16) & 255) - r) * t
+      g += (((to >> 8) & 255) - g) * t
+      b += ((to & 255) - b) * t
     }
-  } else {
-    // мотоцикл, квадроцикл, легковик — один суцільний корпус
-    const body = new THREE.Mesh(new THREE.BoxGeometry(width, len * 0.85, h * 0.5), bodyMat)
-    body.position.set(0, 0, h * 0.55)
-    g.add(body)
-    const rider = new THREE.Mesh(new THREE.BoxGeometry(width * 0.55, len * 0.3, h * 0.4), cabMat)
-    rider.position.set(0, -len * 0.05, h * 0.9)
-    g.add(rider)
-  }
+    // через hex, а не setRGB: так спрацьовує та сама конвертація sRGB → linear,
+    // що й у матеріалів процедурних моделей
+    return new THREE.Color((Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b))
+  })
+}
 
-  const wheelR = Math.min(h * 0.19, 0.55)
-  const wheel = new THREE.CylinderGeometry(wheelR, wheelR, Math.min(0.35, width * 0.28), 8)
-  wheel.rotateZ(Math.PI / 2)
-  const wheelMat = new THREE.MeshLambertMaterial({ color: RUBBER })
-  const axles = len < 3 ? 2 : len > 6 ? 3 : 2
-  for (let i = 0; i < axles; i++) {
-    const y = len * 0.36 - (i / Math.max(1, axles - 1)) * len * 0.72
+/**
+ * Масштаб запеченої моделі. Ширина — точно з каталогу. Довжину й висоту
+ * зв'язує спільний множник (колесо в боковині мусить лишитись круглим),
+ * тому обидві підтягуються до каталогу компромісом і тримаються в ±30% —
+ * рівно та межа, в якій силует ще чесно відповідає класу.
+ */
+function bakedDims(model: BakedModel, d: Dims): Dims {
+  const ideal = Math.sqrt((d.length * d.height) / model.heightRatio)
+  const lo = Math.max(0.7 * d.length, (0.7 * d.height) / model.heightRatio)
+  const hi = Math.min(1.3 * d.length, (1.3 * d.height) / model.heightRatio)
+  const k = Math.min(Math.max(ideal, lo), hi)
+  return { length: k, width: d.width, height: k * model.heightRatio }
+}
+
+function buildBaked(g: THREE.Group, cls: VehicleClass, kind: TargetKind, v: Dims): void {
+  const model = BAKED_VEHICLES[cls]
+  g.add(buildBakedMesh(model, v, tintedPalette(model, kind)))
+}
+
+// ---------------------------------------------------------------------------
+// Процедурні моделі: легковик, укриття
+// ---------------------------------------------------------------------------
+
+/** Пара коліс на кожній осі. Геометрія одна на машину — далі все одно склеюємо. */
+function axles(
+  g: THREE.Group,
+  d: Dims,
+  count: number,
+  r: number,
+  width: number,
+  m: THREE.Material,
+  front = 0.36,
+  span = 0.72,
+): void {
+  const geo = new THREE.CylinderGeometry(r, r, width, 8)
+  geo.rotateZ(Math.PI / 2)
+  for (let i = 0; i < count; i++) {
+    const y = d.length * front - (i / Math.max(1, count - 1)) * d.length * span
     for (const side of [-1, 1]) {
-      const w = new THREE.Mesh(wheel, wheelMat)
-      w.position.set((side * width) / 2, y, wheelR)
-      g.add(w)
+      const mesh = new THREE.Mesh(geo, m)
+      mesh.position.set((side * d.width) / 2, y, r)
+      g.add(mesh)
     }
   }
+}
+
+/** Легковик: звужений корпус і вужча «капсула» салону — читається згори. */
+function buildCar(g: THREE.Group, d: Dims, k: Kit): void {
+  const { width: w, length: l, height: h } = d
+  wedge(g, w * 0.9, w, l * 0.95, h * 0.45, k.body, 0, 0, h * 0.2, 0.95)
+  wedge(g, w * 0.6, w * 0.84, l * 0.44, h * 0.4, k.glass, 0, -l * 0.04, h * 0.62, 0.7)
+  axles(g, d, 2, Math.min(h * 0.2, 0.35), Math.min(0.3, w * 0.22), k.rubber)
+}
+
+/** Укриття: насип зі скосами, вхід видно лише з одного боку (§5). */
+function buildEmplacement(g: THREE.Group, d: Dims, k: Kit): void {
+  const { width: w, length: l, height: h } = d
+  wedge(g, w * 0.62, w, l, h * 0.75, k.earth, 0, 0, 0, 0.75)
+  box(g, w * 0.44, l * 0.3, h * 0.5, k.dark, 0, l * 0.36, h * 0.25)
+  box(g, w * 0.5, 0.25, h * 0.55, k.wood, 0, l * 0.42, h * 0.28)
+}
+
+const BUILDERS: Partial<Record<VehicleClass, (g: THREE.Group, d: Dims, k: Kit) => void>> = {
+  car: buildCar,
+  emplacement: buildEmplacement,
 }
 
 export function buildVehicle(target: Target): THREE.Group {
   const g = new THREE.Group()
-  const paint = paintFor(target)
-  const bodyMat = new THREE.MeshLambertMaterial({ color: paint.body })
-  const cabMat = new THREE.MeshLambertMaterial({ color: paint.cab })
+  const k = kitFor(target.spec.kind)
+  // довжину й висоту рівень може підправити, ширина — з каталогу
+  const d: Dims = { length: target.length, width: target.profile.width, height: target.height }
 
-  if (target.profile.tracked) buildTracked(g, target, bodyMat)
-  else buildWheeled(g, target, bodyMat, cabMat)
+  const baked = BAKED_VEHICLES[target.spec.vehicle]
+  // фактичні габарити моделі: у запечених вони трохи відходять від каталогу,
+  // і сітка мусить міряти по них, а не по паперових цифрах
+  const v: Dims = baked ? bakedDims(baked, d) : d
+  if (baked) buildBaked(g, target.spec.vehicle, target.spec.kind, v)
+  else BUILDERS[target.spec.vehicle]!(g, d, k)
 
-  // маскувальна сітка: розмиває силует, поки не підлетиш близько
+  // маскувальна сітка: намет зі скосами розмиває силует, поки не підлетиш
   if (target.spec.concealed) {
-    const net = new THREE.Mesh(
-      new THREE.BoxGeometry(target.profile.width * 1.5, target.length * 1.15, target.height * 1.05),
-      new THREE.MeshLambertMaterial({ color: 0x6a6f52, transparent: true, opacity: 0.82 }),
-    )
-    net.position.set(0, 0, target.height * 0.55)
-    g.add(net)
+    const net = new THREE.MeshLambertMaterial({ color: 0x6a6f52, transparent: true, opacity: 0.82, flatShading: true })
+    wedge(g, v.width * 0.9, v.width * 1.6, v.length * 1.15, v.height * 1.1, net, 0, 0, 0, 0.86)
   }
 
+  flatten(g)
   g.name = target.spec.id
   return g
 }

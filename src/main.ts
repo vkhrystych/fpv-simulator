@@ -13,7 +13,6 @@ import { Debrief } from './ui/debrief'
 import { LevelSelect } from './ui/levelselect'
 import { Tutorial } from './ui/tutorial'
 import { Progress } from './game/progress'
-import { AngleController } from './flight/angle'
 import { qrotate, v3 } from './flight/math'
 import type { MissionResult } from './game/mission'
 
@@ -38,7 +37,6 @@ interface Runtime {
   camera: FpvCamera
   video: VideoFeed
   vehicles: VehicleRenderer
-  angle?: AngleController
 }
 
 let runtime: Runtime | null = null
@@ -117,7 +115,6 @@ function startFlight(level: (typeof LEVELS)[number]): void {
     camera,
     video,
     vehicles,
-    angle: level.allowAngleMode ? new AngleController(session.drone.spec, 45) : undefined,
   }
 
   // dev-хук: дозволяє з консолі телепортувати дрон і оглядати сцену
@@ -174,12 +171,8 @@ function frame(now: number): void {
     const up = qrotate(drone.state.orientation, v3(0, 0, 1)).z
     input.hoverBias = drone.state.landed ? 0 : drone.hoverThrottleNow / Math.max(up, 0.5)
 
-    let control = input.sample(dt)
-    // тренувальний рівень: ANGLE тримає горизонт, стіки задають кут нахилу
-    if (runtime.angle) {
-      const a = runtime.angle.compute(drone, control.pitch, control.roll)
-      control = { ...control, pitch: a.pitch, roll: a.roll }
-    }
+    // ACRO на всіх рівнях: стік — кутова швидкість, відпустив — нахил лишається
+    const control = input.sample(dt)
 
     drone.update(control, dt)
     const result = mission.update(dt)

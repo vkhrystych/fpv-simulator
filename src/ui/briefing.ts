@@ -2,6 +2,8 @@ import { GRID_COLS, GRID_ROWS, Terrain, gridCellSize } from '../level/terrain'
 import type { LevelSpec } from '../level/types'
 import { DRONES, PAYLOADS } from '../drones'
 import { LEVELS } from '../level/levels'
+import { VEHICLES } from '../game/targets'
+import { TargetPreviews, targetSummary } from './target-preview'
 
 const TOTAL_LEVELS = LEVELS.length
 
@@ -17,6 +19,7 @@ const PLATE_H = 42
 export class Briefing {
   readonly root: HTMLDivElement
   private onStart?: () => void
+  private previews?: TargetPreviews
 
   constructor(parent: HTMLElement) {
     this.root = document.createElement('div')
@@ -32,6 +35,7 @@ export class Briefing {
     onBack?: () => void,
   ): void {
     this.onStart = onStart
+    this.previews?.dispose()
     this.root.innerHTML = ''
     this.root.classList.remove('hidden')
 
@@ -47,6 +51,8 @@ export class Briefing {
       <h1>${level.title}</h1>
       <p class="brief">${level.brief}</p>
       ${this.sortieBlock(level, sortieIndex)}
+      <h2>${level.sorties.length > 1 ? 'Targets' : 'Target'}</h2>
+      <div class="targets"></div>
       <h2>Objectives</h2>
       <ol>${level.objectives.map((o) => `<li>${o}</li>`).join('')}</ol>
       <h2>Aircraft</h2>
@@ -56,10 +62,12 @@ export class Briefing {
         <tr><td>Arming</td><td>${PAYLOADS[level.payloadId].armDistance} m from launch</td></tr>
         <tr><td>Wind</td><td>${level.weather.windSpeed.toFixed(1)} m/s from ${Math.round(level.weather.windFromDeg)}°</td></tr>
         <tr><td>Time limit</td><td>${Math.floor(level.timeLimitS / 60)} min</td></tr>
-        <tr><td>Mode</td><td>${level.allowAngleMode ? 'ANGLE allowed' : 'ACRO'}</td></tr>
+        <tr><td>Mode</td><td>ACRO</td></tr>
       </table>
       <p class="warn">The map is gone once you lift off. Memorise the squares.</p>
     `
+
+    this.fillTargets(right.querySelector('.targets')!, level, terrain, sortieIndex)
 
     const start = document.createElement('button')
     start.textContent = level.sorties.length > 1 ? `LAUNCH — SORTIE ${sortieIndex + 1}` : 'LAUNCH'
@@ -82,8 +90,6 @@ export class Briefing {
       }
       row.appendChild(back)
     }
-    right.appendChild(row)
-
     const help = document.createElement('p')
     help.className = 'help'
     help.textContent =
@@ -93,13 +99,56 @@ export class Briefing {
       'Space cuts the motors in flight if you need it. ' +
       'A keyboard has no analogue axis, so a released throttle drifts back to hover — ' +
       'on a gamepad the throttle is true and absolute.'
-    right.appendChild(help)
+    // підказка вище кнопок: кнопки останні, тому їх можна прибити до низу
+    // колонки — LAUNCH мусить бути під рукою, а не десь під скролом
+    right.append(help, row)
 
     this.root.append(left, right)
   }
 
   hide(): void {
     this.root.classList.add('hidden')
+    this.previews?.dispose()
+    this.previews = undefined
+  }
+
+  /**
+   * Картки цілей: що саме треба вразити цього рівня, у тій самій моделі,
+   * якою воно стоятиме в полі. У польоті підказок немає — усе, що пілот
+   * матиме, це силует, який він тут запам'ятав.
+   */
+  private fillTargets(host: Element, level: LevelSpec, terrain: Terrain, sortieIndex: number): void {
+    const previews = new TargetPreviews()
+    this.previews = previews
+
+    // рівно стільки колонок, скільки цілей: перенос по рядках давав «2 + 1»
+    // із дірою праворуч, а колонка брифінгу все одно вміщає три картки
+    const cards = level.sorties.filter((s) => level.targets.some((t) => t.id === s.targetId)).length
+    host.classList.toggle('single', cards === 1)
+    ;(host as HTMLElement).style.setProperty('--cols', String(Math.max(1, cards)))
+
+    level.sorties.forEach((sortie, i) => {
+      const spec = level.targets.find((t) => t.id === sortie.targetId)
+      if (!spec) return
+
+      const card = document.createElement('div')
+      card.className = `target-card${i === sortieIndex ? ' now' : ''}${i < sortieIndex ? ' done' : ''}`
+      card.appendChild(previews.add(spec, terrain))
+
+      const name = document.createElement('div')
+      name.className = 'target-name'
+      const prefix = level.sorties.length > 1 ? `${i + 1}. ` : ''
+      name.textContent = `${prefix}${(spec.label ?? VEHICLES[spec.vehicle].label).toUpperCase()}`
+
+      const meta = document.createElement('div')
+      meta.className = 'target-meta'
+      meta.textContent = targetSummary(spec)
+
+      card.append(name, meta)
+      host.appendChild(card)
+    })
+
+    previews.start()
   }
 
   /**

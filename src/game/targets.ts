@@ -27,7 +27,6 @@ export interface RouteSpec {
  */
 export type VehicleClass =
   | 'motorcycle'
-  | 'quad'
   | 'car'
   | 'pickup'
   | 'van'
@@ -54,7 +53,6 @@ export interface VehicleProfile {
 
 export const VEHICLES: Record<VehicleClass, VehicleProfile> = {
   motorcycle: { label: 'motorcycle', length: 2.1, width: 0.8, height: 1.3, hitRadius: 1.8, cruiseSpeed: 17, tracked: false, turret: false },
-  quad: { label: 'quad bike', length: 2.5, width: 1.3, height: 1.5, hitRadius: 2.2, cruiseSpeed: 13, tracked: false, turret: false },
   car: { label: 'car', length: 4.4, width: 1.8, height: 1.6, hitRadius: 3, cruiseSpeed: 16, tracked: false, turret: false },
   pickup: { label: 'pickup', length: 5.3, width: 2, height: 1.9, hitRadius: 3.2, cruiseSpeed: 15, tracked: false, turret: false },
   van: { label: 'van', length: 5.6, width: 2.1, height: 2.4, hitRadius: 3.4, cruiseSpeed: 14, tracked: false, turret: false },

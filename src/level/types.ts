@@ -46,8 +46,11 @@ export interface LevelSpec {
   sorties: SortieSpec[]
   /** квадрати ймовірного розташування — усе, що гравець бачить у брифінгу */
   searchCells: string[]
-  /** режим польоту: тренування дозволяє ANGLE */
-  allowAngleMode: boolean
+  /**
+   * Тренувальний рівень. Керування скрізь однакове (ACRO), прапорець лише
+   * послаблює вимоги до наповнення: на полігоні ціль може стояти й бути одна.
+   */
+  training: boolean
   objectives: string[]
 }
 

@@ -2,7 +2,18 @@ import * as THREE from 'three'
 import type { Terrain } from '../level/terrain'
 import type { LevelSpec, WeatherSpec } from '../level/types'
 import { makeRng } from '../flight/math'
-import type { PropField, PropKind } from '../level/props'
+import type { Prop, PropField, PropKind } from '../level/props'
+import { mergeByMaterial } from './shapes'
+import {
+  BUILDING_VARIANTS,
+  BUSH_VARIANTS,
+  HAY_VARIANTS,
+  POLE_H,
+  POLE_VARIANTS,
+  TREE_H,
+  TREE_VARIANTS,
+  type PropKit,
+} from './props-models'
 
 /**
  * Уся геометрія світу — процедурна: жодних асетів, усе з того самого seed,
@@ -13,7 +24,26 @@ const TERRAIN_SEGMENTS = 320
 const GRASS_RADIUS = 75
 const GRASS_COUNT = 5200
 
-interface Palette {
+/**
+ * Матеріали наповнення (будівлі — запечені GLB зі своїми кольорами).
+ * Експортовано, бо сторінка /models показує пропси тими самими матеріалами.
+ */
+export function makePropKit(palette: Palette): PropKit {
+  const lambert = (color: number) => new THREE.MeshLambertMaterial({ color, flatShading: true })
+  return {
+    trunk: lambert(0x4a3f31),
+    leaf: lambert(palette.tree.getHex()),
+    bushLeaf: lambert(palette.tree.clone().offsetHSL(0.02, -0.05, 0.06).getHex()),
+    straw: lambert(0xa8934f),
+    strawCap: lambert(0x9c8746),
+    band: lambert(0x5c5040),
+    wood: lambert(0x6f6152),
+    steel: lambert(0x6b6f66),
+    insulator: lambert(0xcfd4d0),
+  }
+}
+
+export interface Palette {
   sky: THREE.Color
   horizon: THREE.Color
   ground: THREE.Color
@@ -25,7 +55,7 @@ interface Palette {
   ambient: number
 }
 
-const PALETTES: Record<WeatherSpec['timeOfDay'], Palette> = {
+export const PALETTES: Record<WeatherSpec['timeOfDay'], Palette> = {
   dawn: {
     sky: new THREE.Color(0x9fb2c8),
     horizon: new THREE.Color(0xd9c2a8),
@@ -182,25 +212,23 @@ export class World {
    * об дерево, якого не бачить.
    */
   private buildProps(): void {
-    this.instanced('tree', this.treeGeometries(), [0x4a3f31, this.palette.tree.getHex()])
-    this.instanced('bush', [bushGeometry()], [this.palette.tree.clone().offsetHSL(0.02, -0.05, 0.06).getHex()])
-    this.instanced('haystack', [haystackGeometry()], [0xa8934f])
-    this.instanced('pole', poleGeometries(), [0x6b6257, 0x6b6257])
-    this.buildBuildings()
+    const kit = this.propKit()
+    this.instanced('tree', TREE_VARIANTS.map((v) => v(kit)), (p) => p.height / TREE_H)
+    this.instanced('bush', BUSH_VARIANTS.map((v) => v(kit)), (p) => p.scale)
+    this.instanced('haystack', HAY_VARIANTS.map((v) => v(kit)), (p) => p.scale)
+    this.instanced('pole', POLE_VARIANTS.map((v) => v(kit)), (p) => p.height / POLE_H)
+    this.buildBuildings(kit)
   }
 
-  private treeGeometries(): THREE.BufferGeometry[] {
-    const trunk = new THREE.CylinderGeometry(0.28, 0.42, 5, 5)
-    trunk.rotateX(Math.PI / 2)
-    trunk.translate(0, 0, 2.5)
-    const crown = new THREE.ConeGeometry(2.6, 9, 6)
-    crown.rotateX(Math.PI / 2)
-    crown.translate(0, 0, 8.5)
-    return [trunk, crown]
+  private propKit(): PropKit {
+    return makePropKit(this.palette)
   }
 
-  /** Одна InstancedMesh на вид і частину — так тримаємось бюджету draw calls. */
-  private instanced(kind: PropKind, geometries: THREE.BufferGeometry[], colors: number[]): void {
+  /**
+   * Один InstancedMesh на варіант і матеріал — так тримаємось бюджету
+   * draw calls навіть із трьома варіантами кожного виду.
+   */
+  private instanced(kind: PropKind, models: THREE.Group[], heightScale: (p: Prop) => number): void {
     const items = this.props.ofKind(kind)
     if (!items.length) return
 
@@ -210,58 +238,46 @@ export class World {
     const scale = new THREE.Vector3()
     const pos = new THREE.Vector3()
 
-    geometries.forEach((geo, gi) => {
-      const mesh = new THREE.InstancedMesh(
-        geo,
-        new THREE.MeshLambertMaterial({ color: colors[gi] ?? colors[0] }),
-        items.length,
-      )
-      items.forEach((p, i) => {
-        pos.set(p.x, p.y, p.groundZ)
-        const sz = kind === 'tree' ? (p.height / 13) : p.scale
-        scale.set(p.scale, p.scale, sz)
-        q.setFromAxisAngle(up, p.rotation)
-        m.compose(pos, q, scale)
-        mesh.setMatrixAt(i, m)
-      })
-      mesh.instanceMatrix.needsUpdate = true
-      this.scene.add(mesh)
+    const byVariant: Prop[][] = models.map(() => [])
+    for (const p of items) byVariant[variantIndex(p, models.length)].push(p)
+
+    models.forEach((model, vi) => {
+      const list = byVariant[vi]
+      if (!list.length) return
+      for (const child of model.children) {
+        const part = child as THREE.Mesh
+        if (!part.isMesh) continue
+        const mesh = new THREE.InstancedMesh(part.geometry, part.material as THREE.Material, list.length)
+        list.forEach((p, i) => {
+          pos.set(p.x, p.y, p.groundZ)
+          scale.set(p.scale, p.scale, heightScale(p))
+          q.setFromAxisAngle(up, p.rotation)
+          m.compose(pos, q, scale)
+          mesh.setMatrixAt(i, m)
+        })
+        mesh.instanceMatrix.needsUpdate = true
+        this.scene.add(mesh)
+      }
     })
   }
 
-  /** Будівлі мають індивідуальні габарити, тому окремі меші, а не інстанси. */
-  private buildBuildings(): void {
-    // будівлі — головні орієнтири з повітря, тому їм трохи власного світіння:
-    // затінений бік інакше зливається в чорну пляму й нічого не підказує
-    const wallMat = new THREE.MeshLambertMaterial({
-      color: 0xb3a996,
-      emissive: new THREE.Color(0xb3a996).multiplyScalar(0.22),
-    })
-    const roofMat = new THREE.MeshLambertMaterial({
-      color: 0x7d6553,
-      emissive: new THREE.Color(0x7d6553).multiplyScalar(0.22),
-    })
+  /**
+   * Будівлі мають індивідуальні габарити, тому інстансами їх не зібрати —
+   * зате всі ферми карти склеюються в кілька мешів на матеріал.
+   */
+  private buildBuildings(kit: PropKit): void {
+    const groups: THREE.Group[] = []
     for (const p of this.props.ofKind('building')) {
       const w = (p.halfW ?? 4) * 2
       const l = (p.halfL ?? 7) * 2
-      const g = new THREE.Group()
-
-      const walls = new THREE.Mesh(new THREE.BoxGeometry(w, l, p.height), wallMat)
-      walls.position.z = p.height / 2
-      g.add(walls)
-
-      // Двосхилий дах: із повітря будівля читається саме дахом.
-      // Тригранна призма, вісь якої вже збігається з довжиною будівлі (локальна Y),
-      // тому її треба лише довернути навколо власної осі, щоб ребро дивилось угору.
-      const roof = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.62, w * 0.62, l, 3, 1), roofMat)
-      roof.rotation.y = -Math.PI / 2
-      roof.position.z = p.height + w * 0.18
-      g.add(roof)
-
+      const build = BUILDING_VARIANTS[p.variant ?? variantIndex(p, BUILDING_VARIANTS.length)]
+      const g = build(kit, w, l, p.height)
       g.position.set(p.x, p.y, p.groundZ)
       g.rotation.z = p.rotation
-      this.scene.add(g)
+      groups.push(g)
     }
+    if (!groups.length) return
+    for (const mesh of mergeByMaterial(groups)) this.scene.add(mesh)
   }
 
   /** Ґрунтівки будуємо з маршрутів цілей — дорога і є підказкою, де шукати. */
@@ -364,28 +380,17 @@ export class World {
   }
 }
 
-/** Кущ — приплюснута низькополігональна півсфера. */
-function bushGeometry(): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(1.5, 6, 4, 0, Math.PI * 2, 0, Math.PI / 2)
-  g.rotateX(Math.PI / 2)
-  g.scale(1, 1, 0.7)
-  return g
-}
-
-/** Стіг — циліндр із конічною шапкою, злитий в одну геометрію. */
-function haystackGeometry(): THREE.BufferGeometry {
-  const g = new THREE.CylinderGeometry(2.4, 2.6, 3.2, 8)
-  g.rotateX(Math.PI / 2)
-  g.translate(0, 0, 1.6)
-  return g
-}
-
-/** Стовп ЛЕП: щогла й траверса — саме траверса робить силует упізнаваним. */
-function poleGeometries(): THREE.BufferGeometry[] {
-  const mast = new THREE.CylinderGeometry(0.22, 0.32, 11, 5)
-  mast.rotateX(Math.PI / 2)
-  mast.translate(0, 0, 5.5)
-  const arm = new THREE.BoxGeometry(4.2, 0.22, 0.22)
-  arm.translate(0, 0, 9.6)
-  return [mast, arm]
+/**
+ * Який із варіантів моделі дістанеться цьому об'єкту. Рахується з координат,
+ * а не з лічильника: лісосмуга мусить виглядати однаково при кожному запуску
+ * рівня, інакше орієнтир, який пілот запам'ятав на брифінгу, зникає.
+ *
+ * Хеш — тільки через Math.imul: велика константа у звичайному множенні
+ * виходить за точність float64 (§11a.3).
+ */
+function variantIndex(p: Prop, count: number): number {
+  let h = Math.imul(Math.round(p.x * 16) | 0, 0x27d4eb2d)
+  h = Math.imul(h ^ (Math.round(p.y * 16) | 0), 0x165667b1)
+  h ^= h >>> 15
+  return Math.abs(h) % count
 }

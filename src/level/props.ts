@@ -1,4 +1,7 @@
 import { clamp, makeRng, type Vec3 } from '../flight/math'
+// building-data — чисті числа без three.js, тому логічному шару можна:
+// пропорції моделей потрібні тут, щоб колайдер збігався з тим, що намальовано
+import { BUILDING_RATIOS } from '../render/building-data'
 import type { Terrain } from './terrain'
 
 /**
@@ -28,9 +31,33 @@ export interface Prop {
   /** прямокутний слід (напівдовжини в локальних осях): будівлі */
   halfW?: number
   halfL?: number
+  /**
+   * Індекс моделі будівлі (BUILDING_TYPES): обирається при генерації, бо
+   * габарити колайдера кроються під пропорції саме цієї моделі. Для решти
+   * видів варіант рендер добирає хешем координат.
+   */
+  variant?: number
   /** масштаб для рендера */
   scale: number
+  /**
+   * Траверса ЛЕП: тонка плита впоперек стовпа, зверху щогли.
+   * Без неї в найпомітнішу частину стовпа можна пролетіти наскрізь —
+   * колайдер щогли має радіус 0.6 м, а траверса розкинута на 4.3 м.
+   */
+  arm?: PropArm
 }
+
+export interface PropArm {
+  /** півширина плити вздовж локальної осі X, м */
+  halfSpan: number
+  halfThick: number
+  /** межі по висоті, у частках `height` */
+  z0: number
+  z1: number
+}
+
+/** Одна траверса на всі стовпи — усі три моделі малюють її однаковою. */
+export const POLE_ARM: PropArm = { halfSpan: 2.15, halfThick: 0.2, z0: 0.75, z1: 1 }
 
 /** Людські назви для дебрифу — гравець мусить розуміти, у що саме він влетів. */
 export const PROP_LABELS: Record<PropKind, string> = {
@@ -162,9 +189,16 @@ export class PropField {
       for (let i = 0; i < cluster && placed < count; i++) {
         const x = cx + (rng() - 0.5) * 55
         const y = cy + (rng() - 0.5) * 55
-        const halfL = 5 + rng() * 9
-        const halfW = 3.5 + rng() * 4
-        const height = 4 + rng() * 4.5
+        // Колайдер кроїться під обрану модель, а не навпаки: інакше дах
+        // або стирчить із колайдера, або гравець б'ється об повітря.
+        // Фасад 10–20 м, висота не вище 12.5 м — з повітря будинок має
+        // читатись як великий орієнтир, а не губитись серед кущів.
+        const variant = Math.floor(rng() * BUILDING_RATIOS.length)
+        const ratio = BUILDING_RATIOS[variant]
+        const facade = Math.min(9.8 + rng() * 9.8, 12.5 / ratio.heightRatio)
+        const halfL = facade / 2
+        const halfW = (facade * ratio.depthRatio) / 2
+        const height = facade * ratio.heightRatio
         if (this.blocked(x, y, Math.max(halfL, halfW) + 6, ex)) continue
         // на крутому схилі будівлю не ставлять
         if (this.terrain.slopeDeg(x, y) > 14) continue
@@ -176,6 +210,7 @@ export class PropField {
           height,
           halfW,
           halfL,
+          variant,
           rotation: clusterAngle + (rng() - 0.5) * 0.5,
           scale: 1,
         })
@@ -230,8 +265,10 @@ export class PropField {
           groundZ: this.terrain.height(x, y),
           height: 11 + rng() * 2,
           radius: 0.6,
-          rotation: angle,
+          // траверса дивиться ПОПЕРЕК лінії, тому стовп повернутий на 90°
+          rotation: angle + Math.PI / 2,
           scale: 1,
+          arm: POLE_ARM,
         })
       }
     }
@@ -267,19 +304,8 @@ export class PropField {
     const span = Math.hypot(to.x - from.x, to.y - from.y) / 2 + 16
 
     for (const p of this.near(midX, midY, span)) {
-      const t = p.radius !== undefined
-        ? closestParamToPoint(from, to, p.x, p.y)
-        : closestParamToBox(from, to, p)
-      if (t === null) continue
-
-      const px = from.x + (to.x - from.x) * t
-      const py = from.y + (to.y - from.y) * t
-      const pz = from.z + (to.z - from.z) * t
-
-      if (p.radius !== undefined) {
-        if (Math.hypot(px - p.x, py - p.y) > p.radius + droneRadius) continue
-      }
-      if (pz >= p.groundZ && pz <= p.groundZ + p.height) return p
+      if (hitsBody(from, to, p, droneRadius)) return p
+      if (p.arm && hitsArm(from, to, p, droneRadius)) return p
     }
     return null
   }
@@ -295,6 +321,38 @@ export class PropField {
   }
 }
 
+/** Основне тіло об'єкта: круглий слід (дерево, кущ, стіг, щогла) або прямокутний (будівля). */
+function hitsBody(from: Vec3, to: Vec3, p: Prop, droneRadius: number): boolean {
+  const t = p.radius !== undefined
+    ? closestParamToPoint(from, to, p.x, p.y)
+    : closestParamToBox(from, to, p.x, p.y, p.rotation, p.halfW ?? 0, p.halfL ?? 0)
+  if (t === null) return false
+
+  const px = from.x + (to.x - from.x) * t
+  const py = from.y + (to.y - from.y) * t
+  const pz = from.z + (to.z - from.z) * t
+
+  if (p.radius !== undefined && Math.hypot(px - p.x, py - p.y) > p.radius + droneRadius) return false
+  return pz >= p.groundZ && pz <= p.groundZ + p.height
+}
+
+/** Траверса: та сама плита, що й у моделі, тільки з запасом на радіус дрона. */
+function hitsArm(from: Vec3, to: Vec3, p: Prop, droneRadius: number): boolean {
+  const arm = p.arm!
+  const t = closestParamToBox(
+    from,
+    to,
+    p.x,
+    p.y,
+    p.rotation,
+    arm.halfSpan + droneRadius,
+    arm.halfThick + droneRadius,
+  )
+  if (t === null) return false
+  const pz = from.z + (to.z - from.z) * t
+  return pz >= p.groundZ + p.height * arm.z0 && pz <= p.groundZ + p.height * arm.z1
+}
+
 /** Параметр найближчої точки відрізка до вертикальної осі, у [0,1]. */
 function closestParamToPoint(from: Vec3, to: Vec3, tx: number, ty: number): number {
   const dx = to.x - from.x
@@ -308,16 +366,22 @@ function closestParamToPoint(from: Vec3, to: Vec3, tx: number, ty: number): numb
  * Перетин відрізка з повернутим прямокутником: переводимо відрізок у локальні
  * осі будівлі й робимо звичайний slab-тест. Повертає параметр входу або null.
  */
-function closestParamToBox(from: Vec3, to: Vec3, p: Prop): number | null {
-  const c = Math.cos(-p.rotation)
-  const s = Math.sin(-p.rotation)
-  const ax = (from.x - p.x) * c - (from.y - p.y) * s
-  const ay = (from.x - p.x) * s + (from.y - p.y) * c
-  const bx = (to.x - p.x) * c - (to.y - p.y) * s
-  const by = (to.x - p.x) * s + (to.y - p.y) * c
+function closestParamToBox(
+  from: Vec3,
+  to: Vec3,
+  cx: number,
+  cy: number,
+  rotation: number,
+  hw: number,
+  hl: number,
+): number | null {
+  const c = Math.cos(-rotation)
+  const s = Math.sin(-rotation)
+  const ax = (from.x - cx) * c - (from.y - cy) * s
+  const ay = (from.x - cx) * s + (from.y - cy) * c
+  const bx = (to.x - cx) * c - (to.y - cy) * s
+  const by = (to.x - cx) * s + (to.y - cy) * c
 
-  const hw = p.halfW ?? 0
-  const hl = p.halfL ?? 0
   const dx = bx - ax
   const dy = by - ay
 
