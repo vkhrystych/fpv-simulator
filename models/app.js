@@ -81,9 +81,11 @@ function select(i) {
   const item = CATALOG[index]
 
   el.title.textContent = item.label
-  el.dims.textContent = item.dims.radius
-    ? `${item.dims.height} m tall · r ${item.dims.radius} m`
-    : `${item.dims.length} × ${item.dims.width} × ${item.dims.height} m`
+  el.dims.textContent =
+    item.dims.text ??
+    (item.dims.radius
+      ? `${item.dims.height} m tall · r ${item.dims.radius} m`
+      : `${item.dims.length} × ${item.dims.width} × ${item.dims.height} m`)
   el.note.textContent = item.note
 
   // понад 4 варіанти (будинки) — другий ряд, інакше картки стають смужками
@@ -104,7 +106,9 @@ function select(i) {
     v.card.querySelector('.hint').textContent = variant.hint
   })
 
-  applyView(maxR, maxH)
+  // анімовані об'єкти (вибух) розростаються далеко за стартовий бокс —
+  // їм кадр задає каталог, а не Box3 нерухомого стану
+  applyView(item.frame?.radius ?? maxR, item.frame?.height ?? maxH)
   renderList()
 }
 
@@ -174,7 +178,9 @@ function frame(now) {
   last = now
   if (spin) cam.yaw += dt * 0.35
   for (const v of viewers) {
-    if (v.card.style.display !== 'none') v.viewer.render(cam)
+    if (v.card.style.display === 'none') continue
+    v.viewer.model?.userData.tick?.(dt)
+    v.viewer.render(cam)
   }
 }
 

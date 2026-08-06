@@ -324,3 +324,28 @@ kbd {
   border-radius: 3px;
   background: #1a1f16;
 }
+
+/* Плашка повтору спостерігача: моно-білий, на відміну від зеленого OSD */
+.rec-tag {
+  position: fixed;
+  top: 3.5vh;
+  right: 3vw;
+  pointer-events: none;
+  color: #e6e6e2;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+  white-space: pre;
+}
+.rec-tag span { animation: rec-blink 1.1s steps(2, jump-none) infinite; }
+.rec-tag em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 11px;
+  text-align: right;
+  opacity: 0.45;
+}
+@keyframes rec-blink {
+  50% { opacity: 0.15; }
+}

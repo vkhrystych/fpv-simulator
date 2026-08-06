@@ -217,9 +217,24 @@ export class VehicleRenderer {
         g.visible = false
         continue
       }
+      g.visible = true
       g.position.set(t.position.x, t.position.y, t.position.z)
       g.rotation.set(0, 0, -t.heading)
     }
+  }
+
+  /** Пряме керування позою для повтору: пише меш, оминаючи логічні цілі. */
+  pose(id: string, x: number, y: number, z: number, heading: number, visible: boolean): void {
+    const g = this.meshes.get(id)
+    if (!g) return
+    g.visible = visible
+    g.position.set(x, y, z)
+    g.rotation.set(0, 0, -heading)
+  }
+
+  setVisible(id: string, visible: boolean): void {
+    const g = this.meshes.get(id)
+    if (g) g.visible = visible
   }
 
   dispose(): void {

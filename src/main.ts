@@ -7,6 +7,8 @@ import { World } from './render/world'
 import { FpvCamera } from './render/camera'
 import { VideoFeed } from './render/video'
 import { VehicleRenderer } from './render/vehicles'
+import { ReplayRecorder } from './game/replay'
+import { ReplayView } from './render/replay'
 import { Osd } from './ui/osd'
 import { Briefing } from './ui/briefing'
 import { Debrief } from './ui/debrief'
@@ -37,9 +39,41 @@ interface Runtime {
   camera: FpvCamera
   video: VideoFeed
   vehicles: VehicleRenderer
+  recorder: ReplayRecorder
 }
 
 let runtime: Runtime | null = null
+
+/**
+ * Повтор ураження (§13): 0.7 с «сигнал втрачено», потім ~6 с ЧБ-картинки
+ * з борта спостерігача — підліт і пил, — і аж тоді дебриф.
+ * Будь-яка клавіша або клік пропускає.
+ */
+interface ReplayState {
+  view: ReplayView
+  /** пауза чорного снігу перед врубанням лінка спостерігача */
+  delay: number
+  onDone: () => void
+}
+let replay: ReplayState | null = null
+let replaySkip = false
+
+const recTag = document.createElement('div')
+recTag.className = 'rec-tag hidden'
+recTag.innerHTML = '<span>●</span> REC · OBS-2 <em>any key — skip</em>'
+app.appendChild(recTag)
+addEventListener('keydown', () => (replaySkip = true))
+addEventListener('pointerdown', () => (replaySkip = true))
+
+function endReplay(): void {
+  if (!runtime || !replay) return
+  replay.view.dispose()
+  runtime.video.setMono(!!runtime.session.drone.spec.camera.monochrome)
+  recTag.classList.add('hidden')
+  const done = replay.onDone
+  replay = null
+  done()
+}
 let levelIndex = 0
 /** індекс поточного вильоту в межах рівня; провал відкидає на нуль */
 let sortieIndex = 0
@@ -97,6 +131,9 @@ function loadSortie(index: number, sortie = 0): void {
 }
 
 function startFlight(level: (typeof LEVELS)[number]): void {
+  replay?.view.dispose()
+  replay = null
+  recTag.classList.add('hidden')
   runtime?.video.dispose()
   runtime?.vehicles.dispose()
 
@@ -115,6 +152,7 @@ function startFlight(level: (typeof LEVELS)[number]): void {
     camera,
     video,
     vehicles,
+    recorder: new ReplayRecorder(),
   }
 
   // dev-хук: дозволяє з консолі телепортувати дрон і оглядати сцену
@@ -150,10 +188,13 @@ function frame(now: number): void {
   lastTime = now
   if (!runtime) return
 
-  const { session, world, camera, video, vehicles } = runtime
+  const { session, world, camera, video, vehicles, recorder } = runtime
   const { drone, mission } = session
 
   if (input.menuRequested) {
+    replay?.view.dispose()
+    replay = null
+    recTag.classList.add('hidden')
     runtime = null
     showCampaign()
     return
@@ -161,6 +202,27 @@ function frame(now: number): void {
 
   if (input.restartRequested) {
     restartLevel()
+    return
+  }
+
+  // Повтор ураження: світ уже завмер, малюємо тільки очима спостерігача
+  if (replay) {
+    const r = replay
+    if (r.delay > 0) {
+      // «сигнал втрачено» — той самий чорний сніг, що й раніше
+      r.delay -= dt
+      video.render(world.scene, camera.camera, dt, 0)
+      if (r.delay <= 0) {
+        video.setMono(true)
+        recTag.classList.remove('hidden')
+        // клавіші, натиснуті ще в польоті, не мусять пропускати повтор
+        replaySkip = false
+      }
+      return
+    }
+    const alive = r.view.update(dt)
+    video.render(world.scene, r.view.camera, dt, r.view.signal)
+    if (!alive || replaySkip) endReplay()
     return
   }
 
@@ -175,6 +237,7 @@ function frame(now: number): void {
     const control = input.sample(dt)
 
     drone.update(control, dt)
+    recorder.capture(now / 1000, drone.state.position, drone.state.orientation, mission.targets)
     const result = mission.update(dt)
     if (result.outcome !== 'flying') {
       finished = result
@@ -194,8 +257,24 @@ function frame(now: number): void {
           ? () => loadSortie(levelIndex + 1, 0)
           : showCampaign
 
-      debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total }, showCampaign)
-      osd.root.classList.add('hidden')
+      const showDebrief = () => {
+        debrief.show(session.level, result, restartLevel, onNext, { index: sortieIndex, total }, showCampaign)
+        osd.root.classList.add('hidden')
+      }
+
+      // ураження заслуговує на повтор; провал — одразу сухий дебриф
+      const target = mission.targets.find((t) => t.spec.id === result.hitTargetId)
+      const clip = recorder.clip(3.4)
+      if (result.outcome === 'success' && target && clip.length > 1) {
+        osd.root.classList.add('hidden')
+        replay = {
+          view: new ReplayView(world.scene, vehicles, clip, target.aimPoint, target.spec.id, innerWidth / innerHeight),
+          delay: 0.7,
+          onDone: showDebrief,
+        }
+      } else {
+        showDebrief()
+      }
     }
   }
 

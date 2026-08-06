@@ -1,4 +1,6 @@
+import * as THREE from 'three'
 import { Target, VEHICLES } from '../src/game/targets'
+import { EXPLOSION_VARIANTS } from '../src/render/explosion'
 import { buildVehicle } from '../src/render/vehicles'
 import { BAKED_VEHICLES } from '../src/render/vehicle-data'
 import { LEVELS } from '../src/level/levels'
@@ -143,11 +145,51 @@ function propCatalog() {
   ]
 }
 
-export const CATALOG = [...vehicleCatalog(), ...propCatalog()]
+// --- ефекти: вибух техніки з повтору спостерігача -------------------------
+
+/** Цикл показу: цілий танк → вибух → пауза на диму → спочатку. */
+function fxCatalog() {
+  const PRE = 0.9
+  const HOLD = 0.6
+  return [
+    {
+      id: 'explosion',
+      group: 'fx',
+      label: 'Explosion',
+      dims: { text: '~4 с циклом' },
+      note: 'Вибух у повторі спостерігача, на прикладі танка · вибери варіант',
+      // камера ширша за танк: стовп диму росте на ~12 м угору
+      frame: { radius: 13, height: 13 },
+      variants: EXPLOSION_VARIANTS.map((v) => ({
+        label: v.label,
+        hint: v.hint,
+        build: () => {
+          const g = new THREE.Group()
+          const tank = buildVehicle(
+            new Target({ id: `fx-${v.id}`, kind: 'target', vehicle: 'tank', position: [0, 0] }, STUB_TERRAIN),
+          )
+          const inst = v.make()
+          g.add(tank, inst.group)
+          let time = 0
+          g.userData.tick = (dt) => {
+            time = (time + dt) % (PRE + v.duration + HOLD)
+            const t = Math.min(time - PRE, v.duration)
+            inst.update(t)
+            tank.position.z = inst.vehicleLift(t)
+          }
+          return g
+        },
+      })),
+    },
+  ]
+}
+
+export const CATALOG = [...vehicleCatalog(), ...propCatalog(), ...fxCatalog()]
 
 export const GROUPS = [
   { id: 'vehicles', label: 'Vehicles' },
   { id: 'props', label: 'World props' },
+  { id: 'fx', label: 'Effects' },
 ]
 
 export const MAX_VARIANTS = Math.max(...CATALOG.map((i) => i.variants.length))

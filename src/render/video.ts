@@ -125,6 +125,11 @@ export class VideoFeed {
     this.material.uniforms.uResolution.value.set(width, height)
   }
 
+  /** Перемикання ЧБ на льоту: повтор спостерігача йде в монохромі. */
+  setMono(on: boolean): void {
+    this.material.uniforms.uMono.value = on ? 1 : 0
+  }
+
   /** Малює сцену в буфер, потім проганяє її через тракт на екран. */
   render(scene: THREE.Scene, camera: THREE.Camera, dt: number, signal: number): void {
     this.time += dt
