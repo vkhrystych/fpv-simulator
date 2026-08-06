@@ -61,12 +61,10 @@ describe('навантаження змінює політ', () => {
   })
 
   it('маса та інерція сповільнюють обертання', () => {
-    // з подвоєною тягою (07.08.2026) моторам вистачає моменту наздогнати
-    // команду за 50 мс навіть із БК — різниця видна лише на початку розгону
-    const bare = rateAfter('mid-8', 'none', 0.02)
-    const loaded = rateAfter('mid-8', 'heavy', 0.02)
-    expect(bare).toBeGreaterThan(loaded * 1.1)
-    expect(rateAfter('mid-8', 'heavy')).toBeGreaterThan(5) // керованість не втрачена за 50 мс
+    const bare = rateAfter('mid-8', 'none')
+    const loaded = rateAfter('mid-8', 'heavy')
+    expect(bare).toBeGreaterThan(loaded * 1.15)
+    expect(loaded).toBeGreaterThan(5) // керованість не втрачена
   })
 
   it('зміщення ЦМ дає маятник: після відпускання стіка дрон гойдається', () => {
