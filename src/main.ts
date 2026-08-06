@@ -53,6 +53,8 @@ interface ReplayState {
   view: ReplayView
   /** пауза чорного снігу перед врубанням лінка спостерігача */
   delay: number
+  /** перші миті повтору скіп не рахується: пілот ще тарабанить по стіках */
+  grace: number
   onDone: () => void
 }
 let replay: ReplayState | null = null
@@ -62,7 +64,11 @@ const recTag = document.createElement('div')
 recTag.className = 'rec-tag hidden'
 recTag.innerHTML = '<span>●</span> REC · OBS-2 <em>any key — skip</em>'
 app.appendChild(recTag)
-addEventListener('keydown', () => (replaySkip = true))
+// e.repeat — автоповтор утримуваної клавіші: газ, затиснутий у момент удару,
+// НЕ мусить пропускати повтор (саме так реплей «не з'являвся» взагалі)
+addEventListener('keydown', (e) => {
+  if (!e.repeat) replaySkip = true
+})
 addEventListener('pointerdown', () => (replaySkip = true))
 
 function endReplay(): void {
@@ -222,6 +228,8 @@ function frame(now: number): void {
     }
     const alive = r.view.update(dt)
     video.render(world.scene, r.view.camera, dt, r.view.signal)
+    r.grace -= dt
+    if (r.grace > 0) replaySkip = false
     if (!alive || replaySkip) endReplay()
     return
   }
@@ -270,6 +278,7 @@ function frame(now: number): void {
         replay = {
           view: new ReplayView(world.scene, vehicles, clip, target.aimPoint, target.spec.id, innerWidth / innerHeight),
           delay: 0.7,
+          grace: 0.4,
           onDone: showDebrief,
         }
       } else {
